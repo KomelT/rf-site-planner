@@ -36,11 +36,14 @@ app = FastAPI()
 # Add CORS middleware to allow requests from your frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Replace '*' with specific origins like ["http://localhost:3000"] for security
+    allow_origins=[
+        "*"
+    ],  # Replace '*' with specific origins like ["http://localhost:3000"] for security
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
 )
+
 
 def run_splat(task_id: str, request: CoveragePredictionRequest):
     """
@@ -73,8 +76,11 @@ def run_splat(task_id: str, request: CoveragePredictionRequest):
         redis_client.setex(f"{task_id}:error", 3600, str(e))
         raise
 
+
 @app.post("/predict")
-async def predict(payload: CoveragePredictionRequest, background_tasks: BackgroundTasks) -> JSONResponse:
+async def predict(
+    payload: CoveragePredictionRequest, background_tasks: BackgroundTasks
+) -> JSONResponse:
     """
     Predict signal coverage using SPLAT!.
     Accepts a CoveragePredictionRequest and processes it in the background.
@@ -94,6 +100,7 @@ async def predict(payload: CoveragePredictionRequest, background_tasks: Backgrou
     redis_client.setex(f"{task_id}:status", 3600, "processing")
     background_tasks.add_task(run_splat, task_id, payload)
     return JSONResponse({"task_id": task_id})
+
 
 @app.get("/status/{task_id}")
 async def get_status(task_id: str):
@@ -116,6 +123,7 @@ async def get_status(task_id: str):
         return JSONResponse({"error": "Task not found"}, status_code=404)
 
     return JSONResponse({"task_id": task_id, "status": status.decode("utf-8")})
+
 
 @app.get("/result/{task_id}")
 async def get_result(task_id: str):
@@ -150,7 +158,7 @@ async def get_result(task_id: str):
         return StreamingResponse(
             geotiff_file,
             media_type="image/tiff",
-            headers={"Content-Disposition": f"attachment; filename={task_id}.tif"}
+            headers={"Content-Disposition": f"attachment; filename={task_id}.tif"},
         )
     elif status == "failed":
         error = redis_client.get(f"{task_id}:error")

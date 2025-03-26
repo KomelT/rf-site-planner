@@ -14,7 +14,6 @@ import redis
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 from uuid import uuid4
 from services.splat import Splat
 from models.CoveragePredictionRequest import CoveragePredictionRequest
@@ -37,7 +36,7 @@ app = FastAPI()
 # Add CORS middleware to allow requests from your frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:*/", "http://site.meshtastic.org"],  # Replace '*' with specific origins like ["http://localhost:3000"] for security
+    allow_origins=["*"],  # Replace '*' with specific origins like ["http://localhost:3000"] for security
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
@@ -159,5 +158,3 @@ async def get_result(task_id: str):
 
     logger.info(f"Task {task_id} is still processing.")
     return JSONResponse({"status": "processing"})
-
-# app.mount("/", StaticFiles(directory="app/ui", html=True), name="ui")

@@ -195,7 +195,7 @@ const useStore = defineStore('store', {
         this.simulationState = 'running';
     
         // Send the request to the backend's /predict endpoint
-        const predictResponse = await fetch("/predict", {
+        const predictResponse = await fetch(`${import.meta.env.VITE_API_URL}/predict`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -218,7 +218,7 @@ const useStore = defineStore('store', {
         const pollInterval = 1000; // 1 seconds
         const pollStatus = async () => {
           const statusResponse = await fetch(
-            `/status/${taskId}`,
+            `${import.meta.env.VITE_API_URL}/status/${taskId}`,
           );
           if (!statusResponse.ok) {
             throw new Error("Failed to fetch task status.");
@@ -233,7 +233,7 @@ const useStore = defineStore('store', {
 
             // Fetch the GeoTIFF data
             const resultResponse = await fetch(
-              `/result/${taskId}`,
+              `${import.meta.env.VITE_API_URL}/result/${taskId}`,
             );
             if (!resultResponse.ok) {
               throw new Error("Failed to fetch simulation result.");

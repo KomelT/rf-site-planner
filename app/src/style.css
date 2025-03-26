@@ -1,16 +1,16 @@
 html,
 body {
-  height: 100%;
-  margin: 0;
-  padding: 0;
+	height: 100%;
+	margin: 0;
+	padding: 0;
 }
 
 #map {
-  height: 100vh;
-  margin: 0;
-  padding: 0;
+	height: 100vh;
+	margin: 0;
+	padding: 0;
 }
 
 .spinner-border-sm {
-    margin-right: 0.5rem; /* Optional: Add spacing between spinner and text */
+	margin-right: 0.5rem; /* Optional: Add spacing between spinner and text */
 }

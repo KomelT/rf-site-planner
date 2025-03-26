@@ -29,6 +29,6 @@
 </template>
 
 <script setup lang="ts">
-    import { useStore } from '../store.ts'
-    const receiver = useStore().splatParams.receiver
+import { useStore } from "../store.ts";
+const receiver = useStore().splatParams.receiver;
 </script>

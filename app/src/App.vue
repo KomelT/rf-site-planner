@@ -81,26 +81,26 @@
 </template>
 
 <script setup lang="ts">
-import "leaflet/dist/leaflet.css"
-import "bootstrap/dist/css/bootstrap.min.css"
-import "bootstrap/dist/js/bootstrap.bundle.min.js"
-import Transmitter from "./components/Transmitter.vue"
-import Receiver from "./components/Receiver.vue"
-import Environment from "./components/Environment.vue"
-import Simulation from "./components/Simulation.vue"
-import Display from "./components/Display.vue"
+import "leaflet/dist/leaflet.css";
+import "bootstrap/dist/css/bootstrap.min.css";
+import "bootstrap/dist/js/bootstrap.bundle.min.js";
+import Display from "./components/Display.vue";
+import Environment from "./components/Environment.vue";
+import Receiver from "./components/Receiver.vue";
+import Simulation from "./components/Simulation.vue";
+import Transmitter from "./components/Transmitter.vue";
 
-import { useStore } from './store.ts'
-const store = useStore()
+import { useStore } from "./store.ts";
+const store = useStore();
 const buttonText = () => {
-  if ('running' === store.simulationState) {
-    return 'Running'
-  } else if ('failed' === store.simulationState) {
-    return 'Failed'
-  } else {
-    return 'Run Simulation'
-  }
-}
+	if ("running" === store.simulationState) {
+		return "Running";
+	}
+	if ("failed" === store.simulationState) {
+		return "Failed";
+	}
+	return "Run Simulation";
+};
 </script>
 
 <style>

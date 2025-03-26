@@ -47,6 +47,6 @@
 </template>
 
 <script setup lang="ts">
-import { useStore } from '../store.ts'
+import { useStore } from "../store.ts";
 const environment = useStore().splatParams.environment;
 </script>

@@ -19,8 +19,8 @@ const useStore = defineStore('store', {
       splatParams: <SplatParams>{
         transmitter: {
           name: randanimalSync(),
-          tx_lat: 51.102167,
-          tx_lon: -114.098667,
+          tx_lat: 45.854746,
+          tx_lon: 13.726172,
           tx_power: 0.1,
           tx_freq: 907.0,
           tx_height: 2.0,

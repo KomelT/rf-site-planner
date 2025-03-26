@@ -5,14 +5,7 @@ import vue from '@vitejs/plugin-vue'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    proxy: {
-      '/predict': 'http://localhost:8080/',
-      '/status': 'http://localhost:8080/',
-      '/result': 'http://localhost:8080/',
-    },
-  },
-  build: {
-    outDir: 'app/ui',
-    emptyOutDir: true,
-  },
+    port: 8080,
+    host: "0.0.0.0",
+  }
 })

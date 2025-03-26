@@ -22,7 +22,7 @@ from rasterio.enums import Resampling
 from rasterio.transform import from_bounds
 from PIL import Image
 
-from app.models.CoveragePredictionRequest import CoveragePredictionRequest
+from models.CoveragePredictionRequest import CoveragePredictionRequest
 
 
 logger = logging.getLogger(__name__)

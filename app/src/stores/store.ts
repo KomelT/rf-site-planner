@@ -5,9 +5,9 @@ import { defineStore } from "pinia";
 // import { useLocalStorage } from '@vueuse/core';
 import { randanimalSync } from "randanimal";
 import "leaflet-easyprint";
-import { redPinMarker } from "./layers.ts";
-import type { Site, SplatParams } from "./types.ts";
-import { cloneObject } from "./utils.ts";
+import redPinMarker from "../assets/redPinMarker.ts";
+import type { Site, SplatParams } from "../types.ts";
+import { cloneObject } from "../utils.ts";
 
 const useStore = defineStore("store", {
 	state() {
@@ -22,7 +22,7 @@ const useStore = defineStore("store", {
 					tx_lat: 45.854746,
 					tx_lon: 13.726172,
 					tx_power: 0.1,
-					tx_freq: 907.0,
+					tx_freq: 868.5,
 					tx_height: 2.0,
 					tx_gain: 2.0,
 				},

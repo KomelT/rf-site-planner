@@ -14,3 +14,8 @@ body {
 .spinner-border-sm {
 	margin-right: 0.5rem; /* Optional: Add spacing between spinner and text */
 }
+
+.leaflet-div-icon {
+  background: transparent;
+  border: none !important;
+}

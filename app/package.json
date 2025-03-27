@@ -5,7 +5,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "vue-tsc -b && vite build && cp -r public/* app/ui",
+		"build": "vue-tsc -b && vite build",
 		"preview": "vite preview",
 		"check": "biome check",
 		"check:fix": "biome check --write"

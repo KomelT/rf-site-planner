@@ -1,8 +1,9 @@
+@import "tailwindcss";
+
 html,
 body {
 	height: 100%;
-	margin: 0;
-	padding: 0;
+	color: var(--color-gray-200);
 }
 
 #map {
@@ -16,6 +17,6 @@ body {
 }
 
 .leaflet-div-icon {
-  background: transparent;
+  background: transparent !important;
   border: none !important;
 }

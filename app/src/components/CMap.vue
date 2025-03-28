@@ -17,6 +17,6 @@ const mapDefaultZoom = 12;
 </script>
 <style>
 .maplibregl-map {
-  height: calc(100vh - 80px) !important;
+  height: calc(100vh - 64px) !important;
 }
 </style>

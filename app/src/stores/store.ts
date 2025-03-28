@@ -1,19 +1,21 @@
-import parseGeoraster from "georaster";
-import GeoRasterLayer from "georaster-layer-for-leaflet";
-import L from "leaflet";
+//import parseGeoraster from "georaster";
+//import GeoRasterLayer from "georaster-layer-for-leaflet";
+//import L from "leaflet";
 import { defineStore } from "pinia";
 // import { useLocalStorage } from '@vueuse/core';
 import { randanimalSync } from "randanimal";
-import "leaflet-easyprint";
+//import "leaflet-easyprint";
 import redPinMarker from "../assets/redPinMarker.ts";
 import type { Site, SplatParams } from "../types.ts";
 import { cloneObject } from "../utils.ts";
+import { ref } from "vue";
 
 const useStore = defineStore("store", {
 	state() {
 		return {
-			map: undefined as undefined | L.Map,
-			currentMarker: undefined as undefined | L.Marker,
+			//map: undefined as undefined | L.Map,
+			//currentMarker: undefined as undefined | L.Marker,
+			mobileMenuOpen: ref(true),
 			localSites: [] as Site[], //useLocalStorage('localSites', ),
 			simulationState: "idle",
 			splatParams: <SplatParams>{
@@ -56,7 +58,7 @@ const useStore = defineStore("store", {
 		};
 	},
 	actions: {
-		setTxCoords(lat: number, lon: number) {
+		/*setTxCoords(lat: number, lon: number) {
 			this.splatParams.transmitter.tx_lat = lat;
 			this.splatParams.transmitter.tx_lon = lon;
 		},
@@ -178,7 +180,7 @@ const useStore = defineStore("store", {
 				.addTo(this.map as L.Map)
 				.bindPopup("Transmitter site"); // Variable to hold the current marker
 			this.redrawSites();
-		},
+		},*/
 		async runSimulation() {
 			console.log("Simulation running...");
 			try {
@@ -269,7 +271,7 @@ const useStore = defineStore("store", {
 							throw new Error("Failed to fetch simulation result.");
 						}
 						const arrayBuffer = await resultResponse.arrayBuffer();
-						const geoRaster = await parseGeoraster(arrayBuffer);
+						/* const geoRaster = await parseGeoraster(arrayBuffer);
 						this.localSites.push({
 							params: cloneObject(this.splatParams),
 							taskId,
@@ -277,7 +279,7 @@ const useStore = defineStore("store", {
 						});
 						this.currentMarker?.removeFrom(this.map as L.Map);
 						this.splatParams.transmitter.name = await randanimalSync();
-						this.redrawSites();
+						this.redrawSites(); */
 					} else if (statusData.status === "failed") {
 						this.simulationState = "failed";
 					} else {

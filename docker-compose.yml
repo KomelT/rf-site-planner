@@ -20,10 +20,13 @@ services:
     restart: unless-stopped
     volumes:
       - ./api:/var/app
+    env_file:
+      .env
     ports:
       - 8081:8080
     depends_on:
       - redis
+      - geoserver
 
   redis:
     image: redis:latest
@@ -31,3 +34,12 @@ services:
     restart: unless-stopped
     ports:
       - 6379:6379
+
+  geoserver:
+    image: docker.osgeo.org/geoserver:2.27.x
+    container_name: geoserver
+    restart: unless-stopped
+    env_file:
+      .env
+    ports:
+      - 8082:8080

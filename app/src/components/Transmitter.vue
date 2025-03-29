@@ -75,46 +75,46 @@ const store = useStore();
 const transmitter = store.splatParams.transmitter;
 
 const centerMapOnTransmitter = () => {
-    if (!Number.isNaN(transmitter.tx_lat) && !Number.isNaN(transmitter.tx_lon)) {
-        store.map?.setView(
-            [transmitter.tx_lat, transmitter.tx_lon],
-            store.map?.getZoom(),
-        ); // Center map on the coordinates
-    } else {
-        alert("Please enter valid Latitude and Longitude values.");
-    }
+	if (!Number.isNaN(transmitter.tx_lat) && !Number.isNaN(transmitter.tx_lon)) {
+		store.map?.setView(
+			[transmitter.tx_lat, transmitter.tx_lon],
+			store.map?.getZoom(),
+		); // Center map on the coordinates
+	} else {
+		alert("Please enter valid Latitude and Longitude values.");
+	}
 };
 let popover = new bootstrap.Popover(document.createElement("input"), {
-    trigger: "manual",
+	trigger: "manual",
 });
 
 const setWithMap = () => {
-    popover.show();
-    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    store.map?.once("click", (e: any) => {
-        let { lat, lng } = e.latlng; // Get clicked location coordinates
-        lng = ((((lng + 180) % 360) + 360) % 360) - 180;
+	popover.show();
+	// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+	store.map?.once("click", (e: any) => {
+		let { lat, lng } = e.latlng; // Get clicked location coordinates
+		lng = ((((lng + 180) % 360) + 360) % 360) - 180;
 
-        store.setTxCoords(lat.toFixed(6), lng.toFixed(6)); // Update the store
+		store.setTxCoords(lat.toFixed(6), lng.toFixed(6)); // Update the store
 
-        // Remove the existing marker if it exists
-        if (store.currentMarker) {
-            store.map?.removeLayer(store.currentMarker as L.Marker);
-        }
-        // Add a new marker at the clicked location
-        store.currentMarker = L.marker([lat, lng], { icon: redPinMarker }).addTo(
-            store.map as L.Map,
-        );
-        popover.hide(); // Hide the popover
-    });
+		// Remove the existing marker if it exists
+		if (store.currentMarker) {
+			store.map?.removeLayer(store.currentMarker as L.Marker);
+		}
+		// Add a new marker at the clicked location
+		store.currentMarker = L.marker([lat, lng], { icon: redPinMarker }).addTo(
+			store.map as L.Map,
+		);
+		popover.hide(); // Hide the popover
+	});
 };
 onMounted(() => {
-    popover = new bootstrap.Popover(
-        document.getElementById("setWithMap") as Element,
-        {
-            trigger: "manual",
-        },
-    );
-    store.initMap(); // Initialize the map
+	popover = new bootstrap.Popover(
+		document.getElementById("setWithMap") as Element,
+		{
+			trigger: "manual",
+		},
+	);
+	store.initMap(); // Initialize the map
 });
 </script>

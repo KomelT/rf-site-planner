@@ -4,11 +4,11 @@
 import { defineStore } from "pinia";
 // import { useLocalStorage } from '@vueuse/core';
 import { randanimalSync } from "randanimal";
+import { ref } from "vue";
 //import "leaflet-easyprint";
 import redPinMarker from "../assets/redPinMarker.ts";
 import type { Site, SplatParams } from "../types.ts";
 import { cloneObject } from "../utils.ts";
-import { ref } from "vue";
 
 const useStore = defineStore("store", {
 	state() {

@@ -52,7 +52,7 @@
             </div>
             <div class="py-3">
               <a href="https://github.com/KomelT/rf-site-planner" target="_blank"
-                class="flex -mx-3 block rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-200 hover:bg-stone-900">
+                class="flex -mx-3 rounded-lg px-3 py-2.5 text-base/7 font-semibold text-gray-200 hover:bg-stone-900">
                 <span class="sr-only">Source code</span>
                 Source code
                 <GitHubIcon class="ml-2" />

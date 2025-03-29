@@ -25,7 +25,7 @@
         </button>
       </div>
     </nav>
-    <div v-if="mobileMenuOpen">
+    <div :class="mobileMenuOpen ? 'block' : 'hidden'">
       <div
         class="fixed inset-y-0 right-0 z-10 w-full overflow-y-auto bg-stone-800 px-4 py-5 sm:max-w-sm sm:ring-1 sm:ring-gray-900/10">
         <div class="flex items-center justify-between">
@@ -48,7 +48,7 @@
                   item.name }}</a>
             </div>
             <div>
-              <slot />
+              <ModeSelector />
             </div>
             <div class="py-3">
               <a href="https://github.com/KomelT/rf-site-planner" target="_blank"
@@ -66,19 +66,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Dialog, DialogPanel } from '@headlessui/vue'
-import { Bars3Icon, XMarkIcon } from '@heroicons/vue/24/outline'
-import GitHubIcon from '../assets/GitHubIcon.vue'
+import { Dialog, DialogPanel } from "@headlessui/vue";
+import { Bars3Icon, XMarkIcon } from "@heroicons/vue/24/outline";
+import { ref } from "vue";
+import GitHubIcon from "../assets/GitHubIcon.vue";
+import ModeSelector from "./ModeSelector/ModeSelector.vue";
 
 // { name: 'Product', href: '#' }
-const navigation = []
+const navigation = [];
 
 // set default value as false if screen size is less than 1024px
-const mobileMenuOpen = ref(true)
+const mobileMenuOpen = ref(true);
 if (window.innerWidth < 1024) {
-  mobileMenuOpen.value = false
+	mobileMenuOpen.value = false;
 } else {
-  mobileMenuOpen.value = true
+	mobileMenuOpen.value = true;
 }
 </script>

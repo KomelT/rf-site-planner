@@ -6,7 +6,5 @@
   </svg>
 </template>
 <script setup lang="ts">
-import { defineProps } from "vue";
-
 const props = defineProps<{ class?: string }>();
 </script>

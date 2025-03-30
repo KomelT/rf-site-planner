@@ -9,7 +9,7 @@ Endpoints:
     - /status/{task_id}: Retrieves the status of a given prediction task.
     - /result/{task_id}: Retrieves the result (GeoTIFF file) of a given prediction task.
 """
-
+import os
 import redis
 from fastapi import FastAPI, BackgroundTasks
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -76,7 +76,7 @@ def run_splat(task_id: str, request: CoveragePredictionRequest):
         req = requests.request(
             "PUT",
             f"http://geoserver:8080/geoserver/rest/workspaces/RF-SITE-PLANNER/coveragestores/{task_id}/external.geotiff?configure=first&coverageName={task_id}",
-            auth=("admin", "superSecurePassword"),
+            auth=(os.getenv("GEOSERVER_ADMIN_USER"), os.getenv("GEOSERVER_ADMIN_PASSWORD")),
             headers={"Content-type": "text/plain"},
             data=body,
         )

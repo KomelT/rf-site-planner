@@ -4,6 +4,7 @@ services:
       context: app
       dockerfile: dockerfile
     volumes:
+      - ./app:/var/app
       - ./app/dist:/var/app/dist
     env_file:
       - .env.prod
@@ -14,6 +15,7 @@ services:
       dockerfile: dockerfile
     restart: unless-stopped
     volumes:
+      - ./api:/var/app
       - ./geoserver.d/data:/var/app/geoserver_data
     env_file:
       .env.prod

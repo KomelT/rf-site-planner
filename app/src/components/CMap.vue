@@ -1,11 +1,16 @@
 <template>
   <MglMap :mapStyle="mapStyle" :center="mapDefaultCenter" :zoom="mapDefaultZoom">
     <MglNavigationControl position="top-left" />
+    <MglGeolocateControl position="top-left" />
   </MglMap>
 </template>
 <script setup lang="ts">
 import "maplibre-gl/dist/maplibre-gl.css";
-import { MglMap, MglNavigationControl } from "@indoorequal/vue-maplibre-gl";
+import {
+	MglGeolocateControl,
+	MglMap,
+	MglNavigationControl,
+} from "@indoorequal/vue-maplibre-gl";
 
 const mapStyle =
 	"https://raw.githubusercontent.com/hc-oss/maplibre-gl-styles/master/styles/osm-mapnik/v8/default.json";

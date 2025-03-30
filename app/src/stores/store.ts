@@ -184,43 +184,6 @@ const useStore = defineStore("store", {
 		async runSimulation() {
 			console.log("Simulation running...");
 			try {
-				// Collect input values
-				const payload = {
-					// Transmitter parameters
-					lat: this.splatParams.transmitter.tx_lat,
-					lon: this.splatParams.transmitter.tx_lon,
-					tx_height: this.splatParams.transmitter.tx_height,
-					tx_power: 10 * Math.log10(this.splatParams.transmitter.tx_power) + 30,
-					tx_gain: this.splatParams.transmitter.tx_gain,
-					frequency_mhz: this.splatParams.transmitter.tx_freq,
-
-					// Receiver parameters
-					rx_height: this.splatParams.receiver.rx_height,
-					rx_gain: this.splatParams.receiver.rx_gain,
-					signal_threshold: this.splatParams.receiver.rx_sensitivity,
-					system_loss: this.splatParams.receiver.rx_loss,
-
-					// Environment parameters
-					clutter_height: this.splatParams.environment.clutter_height,
-					ground_dielectric: this.splatParams.environment.ground_dielectric,
-					ground_conductivity: this.splatParams.environment.ground_conductivity,
-					atmosphere_bending: this.splatParams.environment.atmosphere_bending,
-					radio_climate: this.splatParams.environment.radio_climate,
-					polarization: this.splatParams.environment.polarization,
-
-					// Simulation parameters
-					radius: this.splatParams.simulation.simulation_extent * 1000,
-					situation_fraction: this.splatParams.simulation.situation_fraction,
-					time_fraction: this.splatParams.simulation.time_fraction,
-					high_resolution: this.splatParams.simulation.high_resolution,
-
-					// Display parameters
-					colormap: this.splatParams.display.color_scale,
-					min_dbm: this.splatParams.display.min_dbm,
-					max_dbm: this.splatParams.display.max_dbm,
-				};
-
-				console.log("Payload:", payload);
 				this.simulationState = "running";
 
 				// Send the request to the backend's /predict endpoint

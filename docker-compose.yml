@@ -20,6 +20,7 @@ services:
     restart: unless-stopped
     volumes:
       - ./api:/var/app
+      - ./geoserver.d/data:/var/app/geoserver_data
     env_file:
       .env
     ports:
@@ -39,6 +40,9 @@ services:
     image: docker.osgeo.org/geoserver:2.27.x
     container_name: geoserver
     restart: unless-stopped
+    volumes:
+      - ./geoserver.d/data:/opt/geoserver_data/data
+      - ./geoserver.d/workspaces/RF-SITE-PLANNER:/opt/geoserver_data/workspaces/RF-SITE-PLANNER
     env_file:
       .env
     ports:

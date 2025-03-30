@@ -95,12 +95,12 @@ type simulationType = {
 	reciverCableLoss: number;
 	radioClimate:
 		| "equatorial"
-		| "continental-subtropical"
-		| "maritime-subtropical"
+		| "continental_subtropical"
+		| "maritime_subtropical"
 		| "desert"
-		| "continental-temperature"
-		| "maritime-temperature-land"
-		| "maritime-temperature-sea";
+		| "continental_temperate"
+		| "maritime_temperature_land"
+		| "maritime_temperature_sea";
 	polarization: "vertical" | "horizontal";
 	clutterHeight: number;
 	groundDielectric: number;
@@ -125,7 +125,7 @@ const simulations: Ref<simulationType[]> = ref([
 		reciverGain: 0,
 		reciverHeight: 0,
 		reciverCableLoss: 0,
-		radioClimate: "continental-temperature",
+		radioClimate: "continental_temperate",
 		polarization: "vertical",
 		clutterHeight: 0,
 		groundDielectric: 0,
@@ -150,7 +150,7 @@ const defautltSimulation: simulationType = {
 	reciverGain: 2,
 	reciverHeight: 1,
 	reciverCableLoss: 2,
-	radioClimate: "continental-temperature",
+	radioClimate: "continental_temperate",
 	polarization: "vertical",
 	clutterHeight: 0.9,
 	groundDielectric: 15,
@@ -202,6 +202,7 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+// watch for simulations changes
 watch(
 	simulations,
 	(simulation) => {
@@ -223,11 +224,103 @@ watch(
 	{ deep: true, immediate: true },
 );
 
-function runSimulation() {
-	console.log("Running simulation...");
-	console.log(simulation.value);
+async function runSimulation() {
+	const payload = {
+		// Transmitter parameters
+		lat: simulation.value.latitude,
+		lon: simulation.value.longitude,
+		tx_height: simulation.value.transmitterHeight,
+		tx_power: 10 * Math.log10(simulation.value.power) + 30,
+		tx_gain: simulation.value.transmitterGain,
+		frequency_mhz: simulation.value.frequency,
+
+		// Receiver parameters
+		rx_height: simulation.value.reciverHeight,
+		rx_gain: simulation.value.reciverGain,
+		signal_threshold: simulation.value.reciverSensitivity,
+		system_loss: simulation.value.reciverCableLoss,
+
+		// Environment parameters
+		clutter_height: simulation.value.clutterHeight,
+		ground_dielectric: simulation.value.groundDielectric,
+		ground_conductivity: simulation.value.groundConductivity,
+		atmosphere_bending: simulation.value.athmosphericBending,
+		radio_climate: simulation.value.radioClimate,
+		polarization: simulation.value.polarization,
+
+		// Simulation parameters
+		radius: simulation.value.maxRange * 1000,
+		situation_fraction: simulation.value.situationFraction,
+		time_fraction: simulation.value.timeFraction,
+		high_resolution: false,
+
+		// Display parameters
+		colormap: "plasma",
+		min_dbm: -130,
+		max_dbm: -80,
+	};
+
+	const predictResponse = await fetch(
+		`${import.meta.env.VITE_API_URL}/predict`,
+		{
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify(payload),
+		},
+	);
+
+	if (!predictResponse.ok) {
+		const errorDetails = await predictResponse.text();
+		throw new Error(`Failed to start prediction: ${errorDetails}`);
+	}
+
+	const predictData = await predictResponse.json();
+	const taskId = predictData.task_id;
+
+	console.log(`Prediction started with task ID: ${taskId}`);
+
+	// Poll for task status and result
+	const pollInterval = 1000; // 1 seconds
+	const pollStatus = async () => {
+		const statusResponse = await fetch(
+			`${import.meta.env.VITE_API_URL}/status/${taskId}`,
+		);
+		if (!statusResponse.ok) {
+			throw new Error("Failed to fetch task status.");
+		}
+
+		const statusData = await statusResponse.json();
+		console.log("Task status:", statusData);
+
+		if (statusData.status === "completed") {
+			if (map.isLoaded && map.map) {
+				map.map.addSource(taskId, {
+					type: "raster",
+					tiles: [
+						`${import.meta.env.VITE_GEOSERVER_URL}/geoserver/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:e80b3611-9031-446f-a6a8-bc4e66bb5027&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`,
+					],
+					tileSize: 256,
+				});
+				map.map.addLayer({
+					id: taskId,
+					type: "raster",
+					source: taskId,
+					paint: {}
+				});
+			}
+		} else if (statusData.status === "failed") {
+			console.error("Simulation failed.");
+		} else {
+			setTimeout(pollStatus, pollInterval); // Poll again after the interval
+		}
+	};
+
+	pollStatus(); // Start polling
 }
 
+// add location listener for selecting location on map
 function addLocationListener() {
 	if (!map.isLoaded || !map.map) return;
 	pickingLocation.value = true;
@@ -249,6 +342,7 @@ function addLocationListener() {
 	});
 }
 
+// fly to current marker
 function flyToCurrentMarker() {
 	if (!map.isLoaded || !map.map) return;
 

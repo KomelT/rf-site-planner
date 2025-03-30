@@ -19,6 +19,7 @@ from services.splat import Splat
 from models.CoveragePredictionRequest import CoveragePredictionRequest
 import logging
 import io
+import requests
 # import os
 
 logging.basicConfig(level=logging.INFO)
@@ -65,9 +66,28 @@ def run_splat(task_id: str, request: CoveragePredictionRequest):
         logger.info(f"Starting SPLAT! coverage prediction for task {task_id}.")
         geotiff_data = splat_service.coverage_prediction(request)
 
+        with open(f"/var/app/geoserver_data/{task_id}.geotiff", "wb") as tiff_file:
+            tiff_file.write(io.BytesIO(geotiff_data).read())
+            logger.info(f"GeoTIFF saved to /var/app/geoserver_data/{task_id}.geotiff")
+
+        # fetch to $VITE_GEOSERVER_URL/workspaces/RF-SITE-PLANNER/datastores/ with POST
+        # apply curl -u admin:geoserver -X PUT -H "Content-type: text/plain" -d @data.tiff http://geoserver:8080/geoserver/rest/workspaces/RF-SITE-PLANNER/datastores/{task_id}/external
+        body = f"/opt/geoserver_data/data/{task_id}.geotiff"
+        req = requests.request(
+            "PUT",
+            f"http://geoserver:8080/geoserver/rest/workspaces/RF-SITE-PLANNER/coveragestores/{task_id}/external.geotiff?configure=first&coverageName={task_id}",
+            auth=("admin", "superSecurePassword"),
+            headers={"Content-type": "text/plain"},
+            data=body,
+        )
+
+        if req.status_code != 201:
+            logger.error(f"Failed to upload GeoTIFF to Geoserver: {req.status_code}")
+            raise Exception(f"Failed to upload GeoTIFF to Geoserver: {req.status_code}")
+
         # Log before storing in Redis
-        logger.info(f"Storing result in Redis for task {task_id}")
-        redis_client.setex(task_id, 3600, geotiff_data)
+        logger.info(f"Storing result in Geoserver for task {task_id}")
+        # redis_client.setex(task_id, 3600, geotiff_data)
         redis_client.setex(f"{task_id}:status", 3600, "completed")
         logger.info(f"Task {task_id} marked as completed.")
     except Exception as e:

@@ -11,7 +11,10 @@
           <InputNumber title="Latitude" v-model:value="simulation.latitude" />
           <InputNumber title="Longtitude" v-model:value="simulation.longitude" />
         </div>
-        <Button text="Find location" @click="flyToCurrentMarker" />
+        <div class="flex flex-row gap-2 mt-3">
+          <Button text="Add location" @click="addLocationListener" />
+          <Button text="Find location" @click="flyToCurrentMarker" />
+        </div>
         <div class="flex flex-row gap-2 mt-3">
           <InputNumber title="Power (W)" v-model:value="simulation.power" />
           <InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency" />
@@ -221,6 +224,22 @@ watch(
 function runSimulation() {
 	console.log("Running simulation...");
 	console.log(simulation.value);
+}
+
+function addLocationListener() {
+	if (!map.isLoaded || !map.map) return;
+
+	const neki = map.map.on("click", (e) => {
+		const { lng, lat } = e.lngLat;
+		simulation.value.latitude = lat;
+		simulation.value.longitude = lng;
+
+		if (currentMarker.value) {
+			currentMarker.value.setLngLat([lng, lat]);
+		}
+
+		neki.unsubscribe();
+	});
 }
 
 function flyToCurrentMarker() {

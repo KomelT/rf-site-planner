@@ -11,6 +11,7 @@
           <InputNumber title="Latitude" v-model:value="simulation.latitude" />
           <InputNumber title="Longtitude" v-model:value="simulation.longitude" />
         </div>
+        <Button text="Find location" @click="flyToCurrentMarker" />
         <div class="flex flex-row gap-2 mt-3">
           <InputNumber title="Power (W)" v-model:value="simulation.power" />
           <InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency" />
@@ -60,13 +61,20 @@
   </div>
 </template>
 <script setup lang="ts">
-import { type Ref, computed, ref } from "vue";
+import { useMap } from "@indoorequal/vue-maplibre-gl";
+import { Marker, Popup } from "maplibre-gl";
+import { type Ref, computed, onBeforeUnmount, ref, watch } from "vue";
+import redPinMarker from "../../assets/redPinMarker";
 import { climateOptions, polarizationOptions } from "../../stores/types";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
+
+const map = useMap();
+
+const currentMarker = ref<Marker | null>(null);
 
 type simulationType = {
 	id: number | undefined;
@@ -128,7 +136,7 @@ const simulations: Ref<simulationType[]> = ref([
 const defautltSimulation: simulationType = {
 	id: undefined,
 	title: `Simulation ${simulations.value.length}`,
-	latitude: 45.8547773177523,
+	latitude: 45.85477731775239,
 	longitude: 13.7264148915045,
 	power: 0.1,
 	frequency: 868.5,
@@ -165,8 +173,69 @@ const simulationsOptions = computed(() => {
 
 const simulation: Ref<simulationType> = ref(defautltSimulation);
 
+watch(
+	simulation,
+	(sim) => {
+		if (!map.isLoaded || !map.map) return;
+
+		if (!currentMarker.value) {
+			currentMarker.value = new Marker({
+				element: redPinMarker,
+			})
+				.setLngLat([sim.longitude, sim.latitude])
+				.setPopup(
+					new Popup({ offset: 25 }).setHTML(
+						`<h3>${sim.title}</h3><p>Power: ${sim.power} W</p><p>Frequency: ${sim.frequency} MHz</p>`,
+					),
+				)
+				.addTo(map.map);
+		}
+
+		// @ts-ignore
+		currentMarker.value.setLngLat([sim.longitude, sim.latitude]);
+	},
+	{ immediate: true, deep: true },
+);
+
+watch(
+	simulations,
+	(simulation) => {
+		if (!map.isLoaded || !map.map) return;
+
+		for (const sim of simulation) {
+			if (sim.id === undefined) continue;
+
+			new Marker()
+				.setLngLat([sim.longitude, sim.latitude])
+				.setPopup(
+					new Popup({ offset: 25 }).setHTML(
+						`<h3>${sim.title}</h3><p>Power: ${sim.power} W</p><p>Frequency: ${sim.frequency} MHz</p>`,
+					),
+				)
+				.addTo(map.map);
+		}
+	},
+	{ deep: true, immediate: true },
+);
+
 function runSimulation() {
 	console.log("Running simulation...");
 	console.log(simulation.value);
 }
+
+function flyToCurrentMarker() {
+	if (!map.isLoaded || !map.map) return;
+
+	map.map.flyTo({
+		center: [simulation.value.longitude, simulation.value.latitude],
+		zoom: 15,
+	});
+}
+
+// remove all markers on umount
+onBeforeUnmount(() => {
+	if (currentMarker.value) {
+		currentMarker.value.remove();
+	}
+});
 </script>

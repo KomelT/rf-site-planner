@@ -1,12 +1,7 @@
-import L from "leaflet";
-
-const redPinMarker = L.divIcon({
-	html: `
+const el = document.createElement("div");
+el.innerHTML = `
     <ul style="list-style-type: none; padding: 0; margin: 0;">
         <li style="color: red; font-size: 30px;">📍</li>
-    </ul>`,
-	iconSize: [30, 30],
-	iconAnchor: [15, 30],
-});
+    </ul>`;
 
-export default redPinMarker;
+export default el;

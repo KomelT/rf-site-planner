@@ -1,67 +1,67 @@
 <template>
-  <div>
-    <DropDown title="Simulations" :options="simulationsOptions" />
-    <form>
-      <div class="mt-3">
-        <InputText title="Simulation title" v-model:value="simulation.title"
-          :placeholder="'Simulation ' + (simulations.length + 1)" />
-      </div>
-      <ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
-        <div class="flex flex-row gap-2">
-          <InputNumber title="Latitude" v-model:value="simulation.latitude" />
-          <InputNumber title="Longtitude" v-model:value="simulation.longitude" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <Button text="Add location" @click="addLocationListener" />
-          <Button text="Find location" @click="flyToCurrentMarker" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <InputNumber title="Power (W)" v-model:value="simulation.power" />
-          <InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <InputNumber title="Height (m)" v-model:value="simulation.transmitterHeight" />
-          <InputNumber title="Gain (dB)" v-model:value="simulation.transmitterGain" />
-        </div>
-      </ModeDataAccordian>
-      <ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
-        <div class="flex flex-row gap-2">
-          <InputNumber title="Sensitivity (dBm)" v-model:value="simulation.reciverSensitivity" />
-          <InputNumber title="Gain (dB)" v-model:value="simulation.reciverGain" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <InputNumber title="Height (m)" v-model:value="simulation.reciverHeight" />
-          <InputNumber title="Cable loss (dB)" v-model:value="simulation.reciverCableLoss" />
-        </div>
-      </ModeDataAccordian>
-      <ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
-        <div class="flex flex-row gap-2">
-          <DropDown title="Radio climate" :options="climateOptions" v-model:value="simulation.radioClimate" />
-          <DropDown title="Polarization" :options="polarizationOptions" v-model:value="simulation.polarization" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <InputNumber title="Clutter height (m)" v-model:value="simulation.clutterHeight" />
-          <InputNumber title="Ground dielectric (V/m)" v-model:value="simulation.groundDielectric" />
-        </div>
-        <div class="flex flex-row gap-2 mt-3">
-          <InputNumber title="Ground conductivity (S/m)" v-model:value="simulation.groundConductivity" />
-          <InputNumber title="Atmospheric bending (N)" v-model:value="simulation.athmosphericBending" />
-        </div>
-      </ModeDataAccordian>
-      <ModeDataAccordian title="Simulation options" v-model:showSection="showSections.simulationsOptions">
-        <div class="flex flex-row gap-2">
-          <InputNumber title="Situation fraction (%)" v-model:value="simulation.situationFraction" />
-          <InputNumber title="Time fraction (%)" v-model:value="simulation.timeFraction" />
-        </div>
-        <div class="mt-3">
-          <InputNumber title="Max range (km)" v-model:value="simulation.maxRange" />
-        </div>
-      </ModeDataAccordian>
-      <div class="flex flex-row justify-end mt-3">
-        <Button text="Run simulation" @click="runSimulation" />
-      </div>
-    </form>
-  </div>
+	<div>
+		<DropDown title="Simulations" :options="simulationsOptions" />
+		<form>
+			<div class="mt-3">
+				<InputText title="Simulation title" v-model:value="simulation.title"
+					:placeholder="'Simulation ' + (simulations.length + 1)" />
+			</div>
+			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
+				<div class="flex flex-row gap-2">
+					<InputNumber title="Latitude" v-model:value="simulation.latitude" />
+					<InputNumber title="Longtitude" v-model:value="simulation.longitude" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<Button :text="'Add location ' + (pickingLocation ? '(ready)' : '')" @click="addLocationListener" />
+					<Button text="Fly to coordinates" @click="flyToCurrentMarker" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Power (W)" v-model:value="simulation.power" />
+					<InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Height (m)" v-model:value="simulation.transmitterHeight" />
+					<InputNumber title="Gain (dB)" v-model:value="simulation.transmitterGain" />
+				</div>
+			</ModeDataAccordian>
+			<ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
+				<div class="flex flex-row gap-2">
+					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.reciverSensitivity" />
+					<InputNumber title="Gain (dB)" v-model:value="simulation.reciverGain" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Height (m)" v-model:value="simulation.reciverHeight" />
+					<InputNumber title="Cable loss (dB)" v-model:value="simulation.reciverCableLoss" />
+				</div>
+			</ModeDataAccordian>
+			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
+				<div class="flex flex-row gap-2">
+					<DropDown title="Radio climate" :options="climateOptions" v-model:value="simulation.radioClimate" />
+					<DropDown title="Polarization" :options="polarizationOptions" v-model:value="simulation.polarization" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Clutter height (m)" v-model:value="simulation.clutterHeight" />
+					<InputNumber title="Ground dielectric (V/m)" v-model:value="simulation.groundDielectric" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Ground conductivity (S/m)" v-model:value="simulation.groundConductivity" />
+					<InputNumber title="Atmospheric bending (N)" v-model:value="simulation.athmosphericBending" />
+				</div>
+			</ModeDataAccordian>
+			<ModeDataAccordian title="Simulation options" v-model:showSection="showSections.simulationsOptions">
+				<div class="flex flex-row gap-2">
+					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situationFraction" />
+					<InputNumber title="Time fraction (%)" v-model:value="simulation.timeFraction" />
+				</div>
+				<div class="mt-3">
+					<InputNumber title="Max range (km)" v-model:value="simulation.maxRange" />
+				</div>
+			</ModeDataAccordian>
+			<div class="flex flex-row justify-end mt-3">
+				<Button text="Run simulation" @click="runSimulation" />
+			</div>
+		</form>
+	</div>
 </template>
 <script setup lang="ts">
 import { useMap } from "@indoorequal/vue-maplibre-gl";
@@ -78,6 +78,7 @@ import ModeDataAccordian from "./ModeDataAccordian.vue";
 const map = useMap();
 
 const currentMarker = ref<Marker | null>(null);
+const pickingLocation = ref(false);
 
 type simulationType = {
 	id: number | undefined;
@@ -139,8 +140,8 @@ const simulations: Ref<simulationType[]> = ref([
 const defautltSimulation: simulationType = {
 	id: undefined,
 	title: `Simulation ${simulations.value.length}`,
-	latitude: 45.85477731775239,
-	longitude: 13.7264148915045,
+	latitude: 45.85473269336,
+	longitude: 13.72616645611,
 	power: 0.1,
 	frequency: 868.5,
 	transmitterHeight: 2,
@@ -176,6 +177,7 @@ const simulationsOptions = computed(() => {
 
 const simulation: Ref<simulationType> = ref(defautltSimulation);
 
+// watch for current simulation changes
 watch(
 	simulation,
 	(sim) => {
@@ -228,14 +230,19 @@ function runSimulation() {
 
 function addLocationListener() {
 	if (!map.isLoaded || !map.map) return;
+	pickingLocation.value = true;
 
 	const neki = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
-		simulation.value.latitude = lat;
-		simulation.value.longitude = lng;
+		pickingLocation.value = false;
+		simulation.value.latitude = Number(lat.toFixed(10));
+		simulation.value.longitude = Number(lng.toFixed(10));
 
 		if (currentMarker.value) {
-			currentMarker.value.setLngLat([lng, lat]);
+			currentMarker.value.setLngLat([
+				Number(lng.toFixed(10)),
+				Number(lat.toFixed(10)),
+			]);
 		}
 
 		neki.unsubscribe();

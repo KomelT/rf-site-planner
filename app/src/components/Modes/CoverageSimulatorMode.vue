@@ -299,7 +299,7 @@ async function runSimulation() {
 				map.map.addSource(taskId, {
 					type: "raster",
 					tiles: [
-						`${import.meta.env.VITE_GEOSERVER_URL}/geoserver/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:e80b3611-9031-446f-a6a8-bc4e66bb5027&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`,
+						`${import.meta.env.VITE_GEOSERVER_URL}/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:${taskId}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`,
 					],
 					tileSize: 256,
 				});
@@ -307,7 +307,7 @@ async function runSimulation() {
 					id: taskId,
 					type: "raster",
 					source: taskId,
-					paint: {}
+					paint: {},
 				});
 			}
 		} else if (statusData.status === "failed") {

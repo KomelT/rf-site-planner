@@ -1,16 +1,16 @@
 <template>
-  <div>
-    <div v-if="showSelector">
-      <p class="text-lg font-bold py-2">Select mode:</p>
-      <div class="grid grid-cols-2 gap-2">
-        <Mode v-for="(mode, index) in modes" :key="index" :title="mode.title" :description="mode.description"
-          :image="mode.image" @click="mode.onClick" />
-      </div>
-    </div>
-    <ModeWrapper v-else :title="selectedModeText" @backButtonClick="showSelector = false">
-      <CoverageSimulatorMode />
-    </ModeWrapper>
-  </div>
+	<div>
+		<div v-if="showSelector">
+			<p class="text-lg font-bold py-2">Select mode:</p>
+			<div class="grid grid-cols-2 gap-2">
+				<Mode v-for="(mode, index) in modes" :key="index" :title="mode.title" :description="mode.description"
+					:image="mode.image" @click="mode.onClick" />
+			</div>
+		</div>
+		<ModeWrapper v-else :title="selectedModeText" @backButtonClick="showSelector = false">
+			<CoverageSimulatorMode v-if="showCoverageSim" />
+		</ModeWrapper>
+	</div>
 </template>
 <script setup lang="ts">
 import { computed, ref } from "vue";

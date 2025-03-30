@@ -62,111 +62,111 @@
 <script setup lang="ts">
 import { type Ref, computed, ref } from "vue";
 import { climateOptions, polarizationOptions } from "../../stores/types";
+import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
-import Button from "../Inputs/Button.vue";
 
 type simulationType = {
-  id: number | undefined;
-  title: string;
-  latitude: number;
-  longitude: number;
-  power: number;
-  frequency: number;
-  transmitterHeight: number;
-  transmitterGain: number;
-  reciverSensitivity: number;
-  reciverGain: number;
-  reciverHeight: number;
-  reciverCableLoss: number;
-  radioClimate:
-  | "equatorial"
-  | "continental-subtropical"
-  | "maritime-subtropical"
-  | "desert"
-  | "continental-temperature"
-  | "maritime-temperature-land"
-  | "maritime-temperature-sea";
-  polarization: "vertical" | "horizontal";
-  clutterHeight: number;
-  groundDielectric: number;
-  groundConductivity: number;
-  athmosphericBending: number;
-  situationFraction: number;
-  timeFraction: number;
-  maxRange: number;
+	id: number | undefined;
+	title: string;
+	latitude: number;
+	longitude: number;
+	power: number;
+	frequency: number;
+	transmitterHeight: number;
+	transmitterGain: number;
+	reciverSensitivity: number;
+	reciverGain: number;
+	reciverHeight: number;
+	reciverCableLoss: number;
+	radioClimate:
+		| "equatorial"
+		| "continental-subtropical"
+		| "maritime-subtropical"
+		| "desert"
+		| "continental-temperature"
+		| "maritime-temperature-land"
+		| "maritime-temperature-sea";
+	polarization: "vertical" | "horizontal";
+	clutterHeight: number;
+	groundDielectric: number;
+	groundConductivity: number;
+	athmosphericBending: number;
+	situationFraction: number;
+	timeFraction: number;
+	maxRange: number;
 };
 
 const simulations: Ref<simulationType[]> = ref([
-  {
-    id: undefined,
-    title: "New simulation",
-    latitude: 0,
-    longitude: 0,
-    power: 0,
-    frequency: 0,
-    transmitterHeight: 0,
-    transmitterGain: 0,
-    reciverSensitivity: 0,
-    reciverGain: 0,
-    reciverHeight: 0,
-    reciverCableLoss: 0,
-    radioClimate: "continental-temperature",
-    polarization: "vertical",
-    clutterHeight: 0,
-    groundDielectric: 0,
-    groundConductivity: 0,
-    athmosphericBending: 0,
-    situationFraction: 0,
-    timeFraction: 0,
-    maxRange: 0,
-  },
+	{
+		id: undefined,
+		title: "New simulation",
+		latitude: 0,
+		longitude: 0,
+		power: 0,
+		frequency: 0,
+		transmitterHeight: 0,
+		transmitterGain: 0,
+		reciverSensitivity: 0,
+		reciverGain: 0,
+		reciverHeight: 0,
+		reciverCableLoss: 0,
+		radioClimate: "continental-temperature",
+		polarization: "vertical",
+		clutterHeight: 0,
+		groundDielectric: 0,
+		groundConductivity: 0,
+		athmosphericBending: 0,
+		situationFraction: 0,
+		timeFraction: 0,
+		maxRange: 0,
+	},
 ]);
 
 const defautltSimulation: simulationType = {
-  id: undefined,
-  title: `Simulation ${simulations.value.length}`,
-  latitude: 45.8547773177523,
-  longitude: 13.7264148915045,
-  power: 0.1,
-  frequency: 868.5,
-  transmitterHeight: 2,
-  transmitterGain: 2,
-  reciverSensitivity: -130,
-  reciverGain: 2,
-  reciverHeight: 1,
-  reciverCableLoss: 2,
-  radioClimate: "continental-temperature",
-  polarization: "vertical",
-  clutterHeight: 0.9,
-  groundDielectric: 15,
-  groundConductivity: 0.005,
-  athmosphericBending: 301,
-  situationFraction: 95,
-  timeFraction: 95,
-  maxRange: 30,
+	id: undefined,
+	title: `Simulation ${simulations.value.length}`,
+	latitude: 45.8547773177523,
+	longitude: 13.7264148915045,
+	power: 0.1,
+	frequency: 868.5,
+	transmitterHeight: 2,
+	transmitterGain: 2,
+	reciverSensitivity: -130,
+	reciverGain: 2,
+	reciverHeight: 1,
+	reciverCableLoss: 2,
+	radioClimate: "continental-temperature",
+	polarization: "vertical",
+	clutterHeight: 0.9,
+	groundDielectric: 15,
+	groundConductivity: 0.005,
+	athmosphericBending: 301,
+	situationFraction: 95,
+	timeFraction: 95,
+	maxRange: 30,
 };
 
 const showSections = ref({
-  transmitter: true,
-  receiver: false,
-  enviroment: false,
-  simulationsOptions: false,
+	transmitter: true,
+	receiver: false,
+	enviroment: false,
+	simulationsOptions: false,
 });
 
 const simulationsOptions = computed(() => {
-  return simulations.value.map((simulation) => ({
-    id: simulation.id,
-    title: simulation.title,
-  }));
+	return simulations.value.map((simulation) => ({
+		id: simulation.id,
+		title: simulation.title,
+	}));
 });
 
 const simulation: Ref<simulationType> = ref(defautltSimulation);
 
 function runSimulation() {
-  console.log("Running simulation...");
-  console.log(simulation.value);
+	console.log("Running simulation...");
+	console.log(simulation.value);
 }
 </script>

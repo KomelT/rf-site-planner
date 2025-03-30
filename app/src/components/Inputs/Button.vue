@@ -5,9 +5,9 @@
 </template>
 <script setup lang="ts">
 type ButtonProps = {
-  text: string;
-  onClick: () => void;
-  class?: string;
+	text: string;
+	onClick: () => void;
+	class?: string;
 };
 
 const props = defineProps<ButtonProps>();

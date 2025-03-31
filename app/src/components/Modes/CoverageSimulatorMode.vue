@@ -58,7 +58,8 @@
 				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
-				<Button text="Run simulation" @click="runSimulation" />
+				<Button text="Run simulation" @click="runSimulation" :loading="isSimulationRunning"
+					:disabled="isSimulationRunning" />
 			</div>
 		</form>
 	</div>
@@ -79,6 +80,7 @@ const map = useMap();
 
 const currentMarker = ref<Marker | null>(null);
 const pickingLocation = ref(false);
+const isSimulationRunning = ref(false);
 
 type simulationType = {
 	id: number | undefined;
@@ -94,13 +96,13 @@ type simulationType = {
 	reciverHeight: number;
 	reciverCableLoss: number;
 	radioClimate:
-		| "equatorial"
-		| "continental_subtropical"
-		| "maritime_subtropical"
-		| "desert"
-		| "continental_temperate"
-		| "maritime_temperature_land"
-		| "maritime_temperature_sea";
+	| "equatorial"
+	| "continental_subtropical"
+	| "maritime_subtropical"
+	| "desert"
+	| "continental_temperate"
+	| "maritime_temperature_land"
+	| "maritime_temperature_sea";
 	polarization: "vertical" | "horizontal";
 	clutterHeight: number;
 	groundDielectric: number;
@@ -225,6 +227,9 @@ watch(
 );
 
 async function runSimulation() {
+	if (!map.isLoaded || !map.map) return;
+
+	isSimulationRunning.value = true;
 	const payload = {
 		// Transmitter parameters
 		lat: simulation.value.latitude,
@@ -272,6 +277,7 @@ async function runSimulation() {
 	);
 
 	if (!predictResponse.ok) {
+		isSimulationRunning.value = false;
 		const errorDetails = await predictResponse.text();
 		throw new Error(`Failed to start prediction: ${errorDetails}`);
 	}
@@ -287,7 +293,9 @@ async function runSimulation() {
 		const statusResponse = await fetch(
 			`${import.meta.env.VITE_API_URL}/status/${taskId}`,
 		);
+
 		if (!statusResponse.ok) {
+			isSimulationRunning.value = false;
 			throw new Error("Failed to fetch task status.");
 		}
 

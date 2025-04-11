@@ -1,0 +1,28 @@
+{
+	"version": 8,
+	"name": "OpenStreetMap raster tiles",
+	"sources": {
+		"openstreetmap": {
+			"type": "raster",
+			"tiles": [
+				"https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+			],
+			"tileSize": 256,
+			"attribution": "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>"
+		}
+	},
+	"layers": [
+		{
+			"id": "background",
+			"type": "background",
+			"paint": {
+				"background-color": "rgba(0,0,0,0)"
+			}
+		},
+		{
+			"id": "openstreetmap",
+			"type": "raster",
+			"source": "openstreetmap"
+		}
+	]
+}

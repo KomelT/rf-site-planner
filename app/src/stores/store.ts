@@ -6,6 +6,7 @@ const useStore = defineStore("store", {
 	state() {
 		return {
 			mobileMenuOpen: ref(true),
+			mapStyle: ref("openstreetmap"),
 		};
 	},
 	actions: {

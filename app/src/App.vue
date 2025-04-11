@@ -1,7 +1,10 @@
 <template>
   <div>
     <Header />
-    <CMap />
+    <div class="flex">
+      <CMap />
+      <Sidebar />
+    </div>
     <NotificationsWrapper />
   </div>
 </template>
@@ -10,4 +13,5 @@
 import CMap from "./components/CMap.vue";
 import Header from "./components/Header.vue";
 import NotificationsWrapper from "./components/Notifications/NotificationsWrapper.vue";
+import Sidebar from "./components/Sidebar.vue";
 </script>

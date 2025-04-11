@@ -4,9 +4,7 @@
 	"sources": {
 		"openstreetmap": {
 			"type": "raster",
-			"tiles": [
-				"https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-			],
+			"tiles": ["https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"],
 			"tileSize": 256,
 			"attribution": "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>"
 		}

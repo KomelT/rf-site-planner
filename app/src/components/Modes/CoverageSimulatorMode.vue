@@ -12,7 +12,8 @@
 					<InputNumber title="Longtitude" v-model:value="simulation.lon" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<Button :text="'Add location ' + (pickingLocation ? '(ready)' : '')" @click="addLocationListener" />
+					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener"
+						:class="pickingLocation ? 'bg-red-600' : ''" />
 					<Button text="Fly to coordinates" @click="flyToCurrentMarker" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
@@ -66,7 +67,7 @@
 </template>
 <script setup lang="ts">
 import { useMap } from "@indoorequal/vue-maplibre-gl";
-import { Marker, Popup } from "maplibre-gl";
+import { Marker, Popup, type Subscription } from "maplibre-gl";
 import { type Ref, computed, onBeforeUnmount, ref, watch } from "vue";
 import redPinMarker from "../../assets/redPinMarker";
 import { useNotificationStore } from "../../stores/notification";
@@ -89,6 +90,7 @@ const notificationStore = useNotificationStore();
 const currentMarker = ref<Marker | null>(null);
 const pickingLocation = ref(false);
 const isSimulationRunning = ref(false);
+const locationPickerSubscription = ref<Subscription | null>(null);
 
 const showSections = ref({
 	transmitter: true,
@@ -280,9 +282,19 @@ async function runSimulation() {
 // add location listener for selecting location on map
 function addLocationListener() {
 	if (!map.isLoaded || !map.map) return;
+
+	if (pickingLocation.value) {
+		pickingLocation.value = false;
+		if (locationPickerSubscription.value) {
+			locationPickerSubscription.value.unsubscribe();
+			locationPickerSubscription.value = null;
+		}
+		return;
+	}
+
 	pickingLocation.value = true;
 
-	const neki = map.map.on("click", (e) => {
+	locationPickerSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
 		pickingLocation.value = false;
 		simulation.value.lat = Number(lat.toFixed(10));
@@ -295,7 +307,10 @@ function addLocationListener() {
 			]);
 		}
 
-		neki.unsubscribe();
+		if (locationPickerSubscription.value) {
+			locationPickerSubscription.value.unsubscribe();
+			locationPickerSubscription.value = null;
+		}
 	});
 }
 

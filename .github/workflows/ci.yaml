@@ -1,0 +1,28 @@
+name: ci
+
+on:
+  push:
+
+jobs:
+  build-docker-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build APP
+        uses: docker/build-push-action@v6
+        continue-on-error: true
+        with:
+          context: app
+          file: dockerfile
+
+      - name: Build API
+        uses: docker/build-push-action@v6
+        continue-on-error: true
+        with:
+          context: api
+          file: dockerfile

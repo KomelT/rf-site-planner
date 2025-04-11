@@ -38,7 +38,6 @@ import {
 	InformationCircleIcon,
 	XCircleIcon,
 } from "@heroicons/vue/24/outline";
-import { defineEmits, defineProps } from "vue";
 import type { Notification } from "../../stores/notification";
 
 export type NotificationMessageProps = Omit<Notification, "id" | "hideAfter">;

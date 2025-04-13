@@ -150,7 +150,7 @@ watch(
 
 		if (!currentMarker.value) {
 			currentMarker.value = new Marker({
-				element: redPinMarker,
+				element: redPinMarker(),
 			})
 				.setLngLat([sim.lon, sim.lat])
 				.setPopup(

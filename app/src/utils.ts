@@ -2,3 +2,7 @@
 export function cloneObject(item: any) {
 	return JSON.parse(JSON.stringify(item));
 }
+
+export function getUniqueId(): string {
+	return Math.random().toString(16).slice(2);
+}

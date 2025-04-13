@@ -167,30 +167,6 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-// watch for simulations changes
-/*
-watch(
-	simulations,
-	(simulation) => {
-		if (!map.isLoaded || !map.map) return;
-
-		for (const sim of simulation) {
-			if (sim.id === undefined) continue;
-
-			new Marker()
-				.setLngLat([sim.lon, sim.lat])
-				.setPopup(
-					new Popup({ offset: 25 }).setHTML(
-						`<h3>${sim.title}</h3><p>Power: ${sim.tx_power} W</p><p>Frequency: ${sim.frequency_mhz} MHz</p>`,
-					),
-				)
-				.addTo(map.map);
-		}
-	},
-	{ deep: true, immediate: true },
-);
-*/
-
 async function runSimulation() {
 	if (!map.isLoaded || !map.map) return;
 
@@ -198,7 +174,7 @@ async function runSimulation() {
 	notificationStore.addNotification({
 		type: "info",
 		message: "Starting simulation...",
-		title: "Simulation",
+		title: "Coverage Simulation",
 		hideAfter: 5000,
 	});
 
@@ -218,61 +194,36 @@ async function runSimulation() {
 		const predictData = await predictRes.json();
 		const taskId = predictData.task_id;
 
-		const pollInterval = 1000;
-		const pollStatus = async () => {
-			const statusRes = await fetch(
-				`${import.meta.env.VITE_API_URL}/task/status/${taskId}`,
-			);
+		const status = await store.fetchSimulationStatus(taskId, 1000)
 
-			if (!statusRes.ok) throw new Error("Failed to fetch task status.");
+		isSimulationRunning.value = false;
+		notificationStore.addNotification({
+			type: "success",
+			message: "Simulation completed successfully.",
+			title: "Coverage Simulation",
+			hideAfter: 5000,
+		});
 
-			const statusData = await statusRes.json();
+		if (map.isLoaded && map.map) {
+			map.map.addSource(`coverage-${taskId}`, {
+				type: "raster",
+				tiles: [store.getMapWmsUrl(taskId)],
+				tileSize: 256,
+			});
+			map.map.addLayer({
+				id: `coverage-${taskId}`,
+				type: "raster",
+				source: `coverage-${taskId}`,
+				paint: {},
+			});
+		}
 
-			if (statusData.status === "completed") {
-				isSimulationRunning.value = false;
-				notificationStore.addNotification({
-					type: "success",
-					message: "Simulation completed successfully.",
-					title: "Simulation",
-					hideAfter: 5000,
-				});
-
-				if (map.isLoaded && map.map) {
-					map.map.addSource(taskId, {
-						type: "raster",
-						tiles: [
-							`${import.meta.env.VITE_GEOSERVER_URL}/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:${taskId}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`,
-						],
-						tileSize: 256,
-					});
-					map.map.addLayer({
-						id: taskId,
-						type: "raster",
-						source: taskId,
-						paint: {},
-					});
-				}
-			} else if (statusData.status === "failed") {
-				isSimulationRunning.value = false;
-				notificationStore.addNotification({
-					type: "error",
-					message: "Simulation failed.",
-					title: "Simulation",
-					hideAfter: 5000,
-				});
-				console.error("Simulation failed.");
-			} else {
-				setTimeout(pollStatus, pollInterval);
-			}
-		};
-
-		pollStatus();
 	} catch (error) {
 		isSimulationRunning.value = false;
 		notificationStore.addNotification({
 			type: "error",
-			message: "Simulation failed.",
-			title: "Simulation",
+			message: "Simulation failed!",
+			title: "Coverage Simulation",
 			hideAfter: 5000,
 		});
 		console.error("Error during simulation:", error);

@@ -1,29 +1,25 @@
 import gzip
+import io
 import logging
 import math
 import os
-import io
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
-from typing import Literal, List, Tuple
-from rasterio.transform import Affine
+from typing import List, Literal, Tuple
 
 import boto3
+import matplotlib.pyplot as plt
+import numpy as np
+import rasterio
 from botocore import UNSIGNED
 from botocore.config import Config
 from botocore.exceptions import ClientError
 from diskcache import Cache
-
-import matplotlib.pyplot as plt
-import numpy as np
-import rasterio
-from rasterio.enums import Resampling
-from rasterio.transform import from_bounds
-from PIL import Image
-
 from models.CoveragePredictionRequest import CoveragePredictionRequest
-
+from PIL import Image
+from rasterio.enums import Resampling
+from rasterio.transform import Affine, from_bounds
 
 logger = logging.getLogger(__name__)
 logging.getLogger("boto3").setLevel(logging.WARNING)
@@ -41,29 +37,6 @@ class Splat:
         bucket_name: str = "elevation-tiles-prod",
         bucket_prefix: str = "v2/skadi",
     ):
-        """
-        SPLAT! wrapper class. Provides methods for generating SPLAT! RF coverage maps in GeoTIFF format.
-        This class automatically downloads and caches the necessary terrain data from AWS:
-        https://registry.opendata.aws/terrain-tiles/.
-
-        SPLAT! and its optional utilities (splat, splat-hd, srtm2sdf, srtm2sdf-hd) must be installed
-        in the `splat_path` directory and be executable.
-
-        See the SPLAT! documentation: https://www.qsl.net/kd2bd/splat.html
-        Additional details: https://github.com/jmcmellen/splat
-
-        Args:
-            splat_path (str): Path to the directory containing the SPLAT! binaries.
-            cache_dir (str): Directory to store cached terrain tiles.
-            cache_size_gb (float): Maximum size of the cache in gigabytes (GB). Defaults to 1.0.
-                When the size of the cached tiles exceeds this value, the oldest tiles are deleted
-                and will be re-downloaded as required.
-            bucket_name (str): Name of the S3 bucket containing terrain tiles. Defaults to the AWS
-                open data bucket `elevation-tiles-prod`.
-            bucket_prefix (str): Folder in the S3 bucket containing the terrain tiles. Defaults to
-                `v2/skadi`, which contains 1-arcsecond terrain data for most of the world.
-        """
-
         # Check the provided SPLAT! path exists
         if not os.path.isdir(splat_path):
             raise FileNotFoundError(
@@ -121,18 +94,6 @@ class Splat:
         )
 
     def coverage_prediction(self, request: CoveragePredictionRequest) -> bytes:
-        """
-        Execute a SPLAT! coverage prediction using the provided CoveragePredictionRequest.
-
-        Args:
-            request (CoveragePredictionRequest): The coverage prediction request object.
-
-        Returns:
-            bytes: the SPLAT! coverage prediction as a GeoTIFF.
-
-        Raises:
-            RuntimeError: If SPLAT! fails to execute.
-        """
         logger.debug(f"Coverage prediction request: {request.json()}")
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -278,39 +239,6 @@ class Splat:
     def _calculate_required_terrain_tiles(
         lat: float, lon: float, radius: float
     ) -> List[Tuple[str, str, str]]:
-        """
-        Determine the set of required terrain tiles for the specified area and their corresponding .sdf / -hd.sdf
-        filenames. This is used for downloading terrain data for SPLAT! which requires the files to follow a specific
-        naming convention.
-
-        Calculates the geographic bounding box based on the provided latitude, longitude, and radius, then
-        determines the necessary tiles to cover the area. It returns filenames in the following formats:
-
-            - .hgt.gz files: raw 1 arc-second terrain elevation tiles stored in AWS Open Data / S3.
-            - .sdf files: Used for standard resolution (3-arcsecond) terrain data in SPLAT!.
-            - .sdf-hd files: Used for high-resolution (1-arcsecond) terrain data in SPLAT!.
-
-        The .hgt.gz filenames have the format:
-            <N|S><latitude: 2 digits><E|W><longitude: 3 digits>.hgt.gz
-            Example: N35W120.hgt.gz
-
-        The .sdf and .sdf-hd filenames have the format:
-            <lat_start>:<lat_end>:<lon_start>:<lon_end>.sdf
-            <lat_start>:<lat_end>:<lon_start>:<lon_end>-hd.sdf
-            Example: 35:36:-120:-119.sdf, 35:36:-120:-119-hd.sdf
-
-        Args:
-            lat (float): Latitude of the center point in degrees.
-            lon (float): Longitude of the center point in degrees.
-            radius (float): Simulation coverage radius in meters.
-
-        Returns:
-            List[Tuple[str, str, str]]: A list of tuples, each containing:
-                - .hgt.gz filename (str)
-                - Corresponding .sdf filename (str)
-                - Corresponding .sdf-hd filename (str)
-        """
-
         earth_radius = 6378137  # meters, approximate.
 
         # Convert radius to angular distance in degrees
@@ -360,18 +288,6 @@ class Splat:
     def _create_splat_qth(
         name: str, latitude: float, longitude: float, elevation: float
     ) -> bytes:
-        """
-        Generate the contents of a SPLAT! .qth file describing a transmitter or receiver site.
-
-        Args:
-            name (str): Name of the site (unused but required for SPLAT!).
-            latitude (float): Latitude of the site in degrees.
-            longitude (float): Longitude of the site in degrees.
-            elevation (float): Elevation (AGL) of the site in meters.
-
-        Returns:
-            bytes: The content of the .qth file formatted for SPLAT!.
-        """
         logger.debug(f"Generating .qth file content for site '{name}'.")
 
         try:
@@ -410,25 +326,6 @@ class Splat:
         tx_gain: float,
         system_loss: float,
     ) -> bytes:
-        """
-        Generate the contents of a SPLAT! .lrp file describing environment and propagation parameters.
-
-        Args:
-            ground_dielectric (float): Earth's dielectric constant.
-            ground_conductivity (float): Earth's conductivity (Siemens per meter).
-            atmosphere_bending (float): Atmospheric bending constant.
-            frequency_mhz (float): Frequency in MHz.
-            radio_climate (str): Radio climate type.
-            polarization (str): Antenna polarization.
-            situation_fraction (float): Fraction of situations (percentage, 0-100).
-            time_fraction (float): Fraction of time (percentage, 0-100).
-            tx_power (float): Transmitter power in dBm.
-            tx_gain (float): Transmitter antenna gain in dB.
-            system_loss (float): System losses in dB (e.g., cable loss).
-
-        Returns:
-            bytes: The content of the .lrp file formatted for SPLAT!.
-        """
         logger.debug("Generating .lrp file content.")
 
         # Mapping for radio climate and polarization to SPLAT! enumerations
@@ -471,18 +368,6 @@ class Splat:
 
     @staticmethod
     def _create_splat_dcf(colormap_name: str, min_dbm: float, max_dbm: float) -> bytes:
-        """
-        Generate the content of a SPLAT! .dcf file controlling the signal level contours
-        using the specified Matplotlib color map.
-
-        Args:
-            colormap_name (str): The name of the Matplotlib colormap.
-            min_dbm (float): The minimum signal strength value for the colormap in dBm.
-            max_dbm (float): The maximum signal strength value for the colormap in dBm.
-
-        Returns:
-            bytes: The content of the .dcf file formatted for SPLAT!.
-        """
         logger.debug(
             f"Generating .dcf file content using colormap '{colormap_name}', min_dbm={min_dbm}, max_dbm={max_dbm}."
         )
@@ -517,7 +402,6 @@ class Splat:
         min_dbm: float,
         max_dbm: float,
     ) -> list:
-        """Generate a list of RGB color values corresponding to the color map, min and max RSSI values in dBm."""
         cmap = plt.get_cmap(colormap_name, 256)  # colormap with 256 levels
         cmap_norm = plt.Normalize(
             vmin=min_dbm, vmax=max_dbm
@@ -537,23 +421,6 @@ class Splat:
         max_dbm: float,
         null_value: int = 255,  # Define the null value for transparency
     ) -> bytes:
-        """
-        Generate GeoTIFF file content from SPLAT! PPM and KML data, with transparency for null areas.
-
-        Args:
-            ppm_bytes (bytes): Binary content of the SPLAT-generated PPM file.
-            kml_bytes (bytes): Binary content of the KML file containing geospatial bounds.
-            colormap_name (str): Name of the matplotlib colormap to use for the GeoTIFF.
-            min_dbm (float): Minimum dBm value for the colormap scale.
-            max_dbm (float): Maximum dBm value for the colormap scale.
-            null_value (int): Pixel value in the PPM that represents null areas. Defaults to 255.
-
-        Returns:
-            bytes: The binary content of the resulting GeoTIFF file.
-
-        Raises:
-            RuntimeError: If the conversion process fails.
-        """
         logger.info("Starting GeoTIFF generation from SPLAT! PPM and KML data.")
 
         try:
@@ -636,22 +503,6 @@ class Splat:
             raise RuntimeError(f"Error during GeoTIFF generation: {e}")
 
     def _download_terrain_tile(self, tile_name: str) -> bytes:
-        """
-        Downloads a terrain tile from the S3 bucket if not found in the local cache.
-
-        This method checks if the requested tile is available in the cache..
-        If the tile is not cached, it downloads the tile from the specified S3 bucket,
-        stores it in the cache, and returns the tile data.
-
-        Args:
-            tile_name (str): The name of the terrain tile to be downloaded.
-
-        Returns:
-            bytes: The binary content of the terrain tile.
-
-        Raises:
-            Exception: If the tile cannot be downloaded from S3.
-        """
         if tile_name in self.tile_cache:
             logger.info(f"Cache hit: {tile_name} found in the local cache.")
             return self.tile_cache[tile_name]
@@ -690,7 +541,6 @@ class Splat:
     def _hgt_filename_to_sdf_filename(
         hgt_filename: str, high_resolution: bool = False
     ) -> str:
-        """helper method to get the expected SPLAT! .sdf filename from the .hgt.gz terrain tile."""
         lat = int(hgt_filename[1:3]) * (1 if hgt_filename[0] == "N" else -1)
         min_lon = int(hgt_filename[4:7]) - (
             -1 if hgt_filename[3] == "E" else 1
@@ -702,26 +552,6 @@ class Splat:
     def _convert_hgt_to_sdf(
         self, tile: bytes, tile_name: str, high_resolution: bool = False
     ) -> bytes:
-        """
-        Converts a .hgt.gz terrain tile (provided as bytes) to a SPLAT! .sdf or -hd.sdf file.
-
-        This method checks if the converted .sdf or -hd.sdf file corresponding to the tile_name
-        exists in the cache. If not, the method decompresses the tile, places it in a temporary
-        directory, performs the conversion using the SPLAT! utility (srtm2sdf or srtm2sdf-hd),
-        and caches the resulting .sdf file.
-
-        Args:
-            tile (bytes): The binary content of the .hgt.gz terrain tile.
-            tile_name (str): The name of the terrain tile (e.g., N35W120.hgt.gz).
-            high_resolution (bool): Whether to generate a high-resolution -hd.sdf file. Defaults to False.
-
-        Returns:
-            bytes: The binary content of the converted .sdf or -hd.sdf file.
-
-        Raises:
-            RuntimeError: If the conversion fails.
-        """
-
         sdf_filename = Splat._hgt_filename_to_sdf_filename(tile_name, high_resolution)
 
         # Check cache for converted file

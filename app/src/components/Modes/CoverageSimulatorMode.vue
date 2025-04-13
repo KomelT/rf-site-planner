@@ -221,7 +221,7 @@ async function runSimulation() {
 		const pollInterval = 1000;
 		const pollStatus = async () => {
 			const statusRes = await fetch(
-				`${import.meta.env.VITE_API_URL}/status/${taskId}`,
+				`${import.meta.env.VITE_API_URL}/task/status/${taskId}`,
 			);
 
 			if (!statusRes.ok) throw new Error("Failed to fetch task status.");

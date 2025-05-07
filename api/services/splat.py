@@ -1,5 +1,6 @@
 import gzip
 import io
+from json import dumps
 import logging
 import math
 import os
@@ -17,11 +18,13 @@ from botocore.config import Config
 from botocore.exceptions import ClientError
 from diskcache import Cache
 from models.CoveragePredictionRequest import CoveragePredictionRequest
+from models.LosPredictionRequest import LosPredictionRequest
 from PIL import Image
 from rasterio.enums import Resampling
 from rasterio.transform import Affine, from_bounds
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 logging.getLogger("boto3").setLevel(logging.WARNING)
 logging.getLogger("botocore").setLevel(logging.WARNING)
 logging.getLogger("s3transfer").setLevel(logging.WARNING)
@@ -93,6 +96,216 @@ class Splat:
             f"Initialized SPLAT! with terrain tile cache at '{cache_dir}' with a size limit of {cache_size_gb} GB."
         )
 
+    def los_prediction(self, request: LosPredictionRequest) -> bytes:
+        logger.debug(f"LOS prediction request: {request.json()}")
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            try:
+                logger.debug(f"Temporary directory created: {tmpdir}")
+
+                # FIXME: Eventually support high-resolution terrain data
+                request.high_resolution = False
+
+                # determine the required terrain tiles
+                required_tiles = Splat._calculate_required_terrain_tiles_los(
+                    request.tx_lat,
+                    request.tx_lon,
+                    request.rx_lat,
+                    request.rx_lon,
+                )
+
+                self._download_convert_tiles(
+                    self, required_tiles, request.high_resolution, tmpdir
+                )
+
+                # write transmitter qth file
+                with open(os.path.join(tmpdir, "tx.qth"), "wb") as qth_file:
+                    qth_file.write(
+                        Splat._create_splat_qth(
+                            "tx",
+                            request.tx_lat,
+                            request.tx_lon,
+                            request.tx_height * (100 / 30.48),
+                        )
+                    )
+
+                # write reciver qth file
+                with open(os.path.join(tmpdir, "rx.qth"), "wb") as qth_file:
+                    qth_file.write(
+                        Splat._create_splat_qth(
+                            "rx",
+                            request.rx_lat,
+                            request.rx_lon,
+                            request.rx_height * (100 / 30.48),
+                        )
+                    )
+
+                # write model parameter / lrp file
+                with open(os.path.join(tmpdir, "splat.lrp"), "wb") as lrp_file:
+                    logger.debug(request.tx_power)
+                    lrp_file.write(
+                        Splat._create_splat_lrp(
+                            ground_dielectric=request.ground_dielectric,
+                            ground_conductivity=request.ground_conductivity,
+                            atmosphere_bending=request.atmosphere_bending,
+                            frequency_mhz=request.frequency_mhz,
+                            radio_climate=request.radio_climate,
+                            polarization=request.polarization,
+                            situation_fraction=request.situation_fraction,
+                            time_fraction=request.time_fraction,
+                            tx_power=request.tx_power,
+                            tx_gain=request.tx_gain,
+                            system_loss=request.system_loss,
+                        )
+                    )
+
+                logger.debug(f"Contents of {tmpdir}: {os.listdir(tmpdir)}")
+
+                splat_command = [
+                    (
+                        self.splat_hd_binary
+                        if request.high_resolution
+                        else self.splat_binary
+                    ),
+                    "-t",
+                    "tx.qth",
+                    "-r",
+                    "rx.qth",
+                    # "-c",
+                    # str(request.rx_height),
+                    "-gc",
+                    str(request.clutter_height),
+                    "-db",
+                    str(request.signal_threshold),
+                    "-gpsav",
+                    "-f",
+                    "868.5M",
+                    "-H",
+                    "test.png",
+                    "-olditm",
+                    "-metric",
+                ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
+                logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
+
+                splat_result = subprocess.run(
+                    splat_command,
+                    cwd=tmpdir,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+
+                logger.debug(f"Contents of {tmpdir}: {os.listdir(tmpdir)}")
+
+                logger.debug(f"SPLAT! stdout:\n{splat_result.stdout}")
+                logger.debug(f"SPLAT! stderr:\n{splat_result.stderr}")
+
+                if splat_result.returncode != 0:
+                    logger.error(
+                        f"SPLAT! execution failed with return code {splat_result.returncode}"
+                    )
+                    raise RuntimeError(
+                        f"SPLAT! execution failed with return code {splat_result.returncode}\n"
+                        f"Stdout: {splat_result.stdout}\nStderr: {splat_result.stderr}"
+                    )
+
+                logger.info("SPLAT! coverage prediction completed successfully.")
+
+                # save all files from tmpdir to /var/app/geoserver_data
+                for filename in os.listdir(tmpdir):
+                    if filename.endswith(".kml") or filename.endswith(".ppm"):
+                        continue
+                    src_path = os.path.join(tmpdir, filename)
+                    dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
+                    with open(src_path, "rb") as src_file:
+                        with open(dst_path, "wb") as dst_file:
+                            dst_file.write(src_file.read())
+
+                with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
+                    with open(
+                        os.path.join(tmpdir, "curvature.gp"), "rb"
+                    ) as curvature_file:
+                        with open(
+                            os.path.join(tmpdir, "fresnel.gp"), "rb"
+                        ) as fresnel_file:
+                            with open(
+                                os.path.join(tmpdir, "reference.gp"), "rb"
+                            ) as reference_file:
+                                profile_data = profile_file.read()
+                                curvature_data = curvature_file.read()
+                                fresnel_data = fresnel_file.read()
+                                reference_data = reference_file.read()
+
+                                profile_lines = profile_data.decode(
+                                    "utf-8"
+                                ).splitlines()
+                                curvature_lines = curvature_data.decode(
+                                    "utf-8"
+                                ).splitlines()
+                                fresnel_lines = fresnel_data.decode(
+                                    "utf-8"
+                                ).splitlines()
+                                reference_lines = reference_data.decode(
+                                    "utf-8"
+                                ).splitlines()
+
+                                distance = []
+                                profile = []
+                                curvature = []
+                                fresnel = []
+                                reference = []
+
+                                for line in profile_lines:
+                                    try:
+                                        d, p = line.split("\t")
+                                        distance.append(float(d))
+                                        profile.append(float(p))
+                                    except ValueError:
+                                        logger.warning(
+                                            f"Skipping invalid line in profile: {line}"
+                                        )
+
+                                for line in curvature_lines:
+                                    try:
+                                        d, c = line.split("\t")
+                                        curvature.append(float(c))
+                                    except ValueError:
+                                        logger.warning(
+                                            f"Skipping invalid line in curvature: {line}"
+                                        )
+
+                                for line in fresnel_lines:
+                                    try:
+                                        d, f = line.split("\t")
+                                        fresnel.append(float(f))
+                                    except ValueError:
+                                        logger.warning(
+                                            f"Skipping invalid line in fresnel: {line}"
+                                        )
+
+                                for line in reference_lines:
+                                    try:
+                                        d, r = line.split("\t")
+                                        reference.append(float(r))
+                                    except ValueError:
+                                        logger.warning(
+                                            f"Skipping invalid line in reference: {line}"
+                                        )
+
+                                return dumps(
+                                    {
+                                        "distance": distance,
+                                        "profile": profile,
+                                        "curvature": curvature,
+                                        "fresnel": fresnel,
+                                        "reference": reference,
+                                    }
+                                )
+
+            except Exception as e:
+                logger.error(f"Error during coverage prediction: {e}")
+                raise RuntimeError(f"Error during coverage prediction: {e}")
+
     def coverage_prediction(self, request: CoveragePredictionRequest) -> bytes:
         logger.debug(f"Coverage prediction request: {request.json()}")
 
@@ -111,7 +324,7 @@ class Splat:
                     request.radius = 100000
 
                 # determine the required terrain tiles
-                required_tiles = Splat._calculate_required_terrain_tiles(
+                required_tiles = Splat._calculate_required_terrain_tiles_coverage(
                     request.lat, request.lon, request.radius
                 )
 
@@ -236,7 +449,90 @@ class Splat:
                 raise RuntimeError(f"Error during coverage prediction: {e}")
 
     @staticmethod
-    def _calculate_required_terrain_tiles(
+    def _calculate_required_terrain_tiles_los(
+        tx_lat: float,
+        tx_lon: float,
+        rx_lat: float,
+        rx_lon: float,
+    ) -> List[Tuple[str, str, str]]:
+        # For grid traversal, we treat longitude as the x-axis and latitude as the y-axis.
+        x0, y0 = tx_lon, tx_lat
+        x1, y1 = rx_lon, rx_lat
+
+        # Compute differences in x and y direction.
+        dx = x1 - x0
+        dy = y1 - y0
+
+        # Starting cell: we use floor to determine in which tile the start point lies.
+        current_x = math.floor(x0)
+        current_y = math.floor(y0)
+
+        # Destination cell: the cell in which the receiver lies.
+        dest_x = math.floor(x1)
+        dest_y = math.floor(y1)
+
+        # List of grid cells (each cell represented as (lat_tile, lon_tile)).
+        grid_cells = [(current_y, current_x)]
+
+        # Determine tDelta: the amount of "parametric time" to cross a grid cell in x or y.
+        # Avoid division by zero for purely vertical or horizontal lines.
+        tDeltaX = abs(1 / dx) if dx != 0 else float("inf")
+        tDeltaY = abs(1 / dy) if dy != 0 else float("inf")
+
+        # Determine the step direction and initial tMax values.
+        if dx > 0:
+            stepX = 1
+            tMaxX = ((current_x + 1) - x0) / dx
+        elif dx < 0:
+            stepX = -1
+            tMaxX = (x0 - current_x) / -dx
+        else:
+            stepX = 0
+            tMaxX = float("inf")
+
+        if dy > 0:
+            stepY = 1
+            tMaxY = ((current_y + 1) - y0) / dy
+        elif dy < 0:
+            stepY = -1
+            tMaxY = (y0 - current_y) / -dy
+        else:
+            stepY = 0
+            tMaxY = float("inf")
+
+        # Traverse the grid until reaching the destination cell.
+        while (current_x, current_y) != (dest_x, dest_y):
+            if tMaxX < tMaxY:
+                current_x += stepX
+                tMaxX += tDeltaX
+            else:
+                current_y += stepY
+                tMaxY += tDeltaY
+
+            grid_cells.append((current_y, current_x))
+
+        # Convert each grid cell coordinate to the tile naming convention.
+        # The convention: N/S latitude with 2 digits and E/W longitude with 3 digits, e.g. N48E012.hgt.gz.
+        tile_names = []
+        for lat_tile, lon_tile in grid_cells:
+            ns = "N" if lat_tile >= 0 else "S"
+            ew = "E" if lon_tile >= 0 else "W"
+            tile_name = f"{ns}{abs(lat_tile):02d}{ew}{abs(lon_tile):03d}.hgt.gz"
+            sdf_filename = Splat._hgt_filename_to_sdf_filename(
+                tile_name, high_resolution=False
+            )
+            sdf_hd_filename = Splat._hgt_filename_to_sdf_filename(
+                tile_name, high_resolution=True
+            )
+            tile_names.append((tile_name, sdf_filename, sdf_hd_filename))
+
+        logger.debug(
+            "Required terrain tile names (optimized for line-of-sight): %s", tile_names
+        )
+        return tile_names
+
+    @staticmethod
+    def _calculate_required_terrain_tiles_coverage(
         lat: float, lon: float, radius: float
     ) -> List[Tuple[str, str, str]]:
         earth_radius = 6378137  # meters, approximate.
@@ -283,6 +579,31 @@ class Splat:
         logger.debug("required tile names are: ")
         logger.debug(tile_names)
         return tile_names
+
+    @staticmethod
+    def _download_convert_tiles(
+        self,
+        required_tiles: List[Tuple[str, str, str]],
+        high_resolution: bool,
+        tmpdir: str,
+    ) -> None:
+        # download and convert terrain tiles to SPLAT! sdf
+        for tile_name, sdf_name, sdf_hd_name in required_tiles:
+            tile_data = self._download_terrain_tile(tile_name)
+            sdf_data = self._convert_hgt_to_sdf(
+                tile_data,
+                tile_name,
+                high_resolution=high_resolution,
+            )
+
+            with open(
+                os.path.join(
+                    tmpdir,
+                    sdf_hd_name if high_resolution else sdf_name,
+                ),
+                "wb",
+            ) as sdf_file:
+                sdf_file.write(sdf_data)
 
     @staticmethod
     def _create_splat_qth(

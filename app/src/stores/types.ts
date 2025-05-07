@@ -1,5 +1,45 @@
 import { ref } from "vue";
 
+export type RadioClimate =
+	| "equatorial"
+	| "continental_subtropical"
+	| "maritime_subtropical"
+	| "desert"
+	| "continental_temperate"
+	| "maritime_temperature_land"
+	| "maritime_temperature_sea";
+
+export type Polarization = "vertical" | "horizontal";
+
+export type LosSimulatorPayload = {
+	tx_lat: number;
+	tx_lon: number;
+	tx_height: number;
+	tx_power: number;
+	tx_gain: number;
+	frequency_mhz: number;
+	rx_lat: number;
+	rx_lon: number;
+	rx_height: number;
+	rx_gain: number;
+	signal_threshold: number;
+	clutter_height: number;
+	ground_dielectric: number;
+	ground_conductivity: number;
+	atmosphere_bending: number;
+	system_loss: number;
+	radio_climate: RadioClimate;
+	polarization: Polarization;
+	situation_fraction: number;
+	time_fraction: number;
+	high_resolution: boolean;
+};
+
+export type LosSimulatorSite = LosSimulatorPayload & {
+	id: string;
+	title: string;
+};
+
 export type CoverageSimulatorPayload = {
 	lat: number;
 	lon: number;
@@ -15,15 +55,8 @@ export type CoverageSimulatorPayload = {
 	ground_dielectric: number;
 	ground_conductivity: number;
 	atmosphere_bending: number;
-	radio_climate:
-		| "equatorial"
-		| "continental_subtropical"
-		| "maritime_subtropical"
-		| "desert"
-		| "continental_temperate"
-		| "maritime_temperature_land"
-		| "maritime_temperature_sea";
-	polarization: "vertical" | "horizontal";
+	radio_climate: RadioClimate;
+	polarization: Polarization;
 	radius: number;
 	situation_fraction: number;
 	time_fraction: number;

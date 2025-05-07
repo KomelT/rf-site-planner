@@ -8,13 +8,13 @@
 			</div>
 			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Latitude" v-model:value="simulation.lat" />
-					<InputNumber title="Longtitude" v-model:value="simulation.lon" />
+					<InputNumber title="Latitude" v-model:value="simulation.tx_lat" />
+					<InputNumber title="Longtitude" v-model:value="simulation.tx_lon" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener"
+					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener('tx')"
 						:class="pickingLocation ? 'bg-red-600' : ''" />
-					<Button text="Fly to coordinates" @click="flyToCurrentMarker" />
+					<Button text="Fly to coordinates" @click="flyToMarker(simulation.tx_lon, simulation.tx_lat)" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Power (W)" v-model:value="simulation.tx_power" />
@@ -25,13 +25,22 @@
 					<InputNumber title="Gain (dB)" v-model:value="simulation.tx_gain" />
 				</div>
 			</ModeDataAccordian>
-			<ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
+			<ModeDataAccordian title="Reciver options" v-model:showSection="showSections.receiver">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.signal_threshold" />
-					<InputNumber title="Gain (dB)" v-model:value="simulation.rx_gain" />
+					<InputNumber title="Latitude" v-model:value="simulation.rx_lat" />
+					<InputNumber title="Longtitude" v-model:value="simulation.rx_lon" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener('rx')"
+						:class="pickingLocation ? 'bg-red-600' : ''" />
+					<Button text="Fly to coordinates" @click="flyToMarker(simulation.rx_lon, simulation.rx_lat)" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="simulation.rx_height" />
+					<InputNumber title="Gain (dB)" v-model:value="simulation.rx_gain" />
+				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.signal_threshold" />
 					<InputNumber title="Cable loss (dB)" v-model:value="simulation.system_loss" />
 				</div>
 			</ModeDataAccordian>
@@ -54,9 +63,6 @@
 					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
 					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
 				</div>
-				<div class="mt-3">
-					<InputNumber title="Max range (km)" v-model:value="simulation.radius" />
-				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
 				<Button text="Run simulation" @click="runSimulation" :loading="isSimulationRunning"
@@ -73,10 +79,11 @@ import redPinMarker from "../../assets/redPinMarker";
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
-	type CoverageSimulatorSite,
+	type LosSimulatorSite,
 	climateOptions,
 	polarizationOptions,
 } from "../../stores/types";
+import { processLosData } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
@@ -87,31 +94,34 @@ const map = useMap();
 const store = useStore();
 const notificationStore = useNotificationStore();
 
-const currentMarker = ref<Marker | null>(null);
+const txMarker = ref<Marker | null>(null);
+const rxMarker = ref<Marker | null>(null);
 const pickingLocation = ref(false);
 const isSimulationRunning = ref(false);
 const locationPickerSubscription = ref<Subscription | null>(null);
 
 const showSections = ref({
 	transmitter: true,
-	receiver: false,
+	receiver: true,
 	enviroment: false,
 	simulationsOptions: false,
 });
 
-const simulations: Ref<CoverageSimulatorSite[]> = ref([]);
+const simulations: Ref<LosSimulatorSite[]> = ref([]);
 
-const defautltSimulationValues: CoverageSimulatorSite = {
+const defautltSimulationValues: LosSimulatorSite = {
 	id: `simulation-${simulations.value.length}`,
 	title: `Simulation ${simulations.value.length}`,
-	lat: 45.85473269336,
-	lon: 13.72616645611,
-	tx_power: 0.1,
-	frequency_mhz: 868.5,
+	tx_lat: 45.85473269336,
+	tx_lon: 13.72616645611,
 	tx_height: 2,
+	tx_power: 0.1,
 	tx_gain: 2,
+	frequency_mhz: 868.5,
+	rx_lat: 45.8579440425,
+	rx_lon: 13.7040361677,
+	rx_height: 2,
 	rx_gain: 2,
-	rx_height: 1,
 	system_loss: 2,
 	signal_threshold: -130,
 	radio_climate: "continental_temperate",
@@ -122,11 +132,7 @@ const defautltSimulationValues: CoverageSimulatorSite = {
 	atmosphere_bending: 301,
 	situation_fraction: 95,
 	time_fraction: 95,
-	radius: 30,
 	high_resolution: false,
-	colormap: "plasma",
-	min_dbm: -130,
-	max_dbm: -80,
 };
 
 if (simulations.value.length === 0) {
@@ -140,7 +146,7 @@ const simulationsOptions = computed(() => {
 	}));
 });
 
-const simulation: Ref<CoverageSimulatorSite> = ref(defautltSimulationValues);
+const simulation: Ref<LosSimulatorSite> = ref(defautltSimulationValues);
 
 // watch for current simulation changes
 watch(
@@ -148,21 +154,36 @@ watch(
 	(sim) => {
 		if (!map.isLoaded || !map.map) return;
 
-		if (!currentMarker.value) {
-			currentMarker.value = new Marker({
+		if (!txMarker.value) {
+			txMarker.value = new Marker({
 				element: redPinMarker(),
 			})
-				.setLngLat([sim.lon, sim.lat])
+				.setLngLat([sim.tx_lon, sim.tx_lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(
-						`<h3>${sim.title}</h3><p>Power: ${sim.tx_power} W</p><p>Frequency: ${sim.frequency_mhz} MHz</p>`,
+						`<h3>Tx site for ${sim.title}</h3>`,
+					),
+				)
+				.addTo(map.map);
+		}
+
+		if (!rxMarker.value) {
+			rxMarker.value = new Marker({
+				element: redPinMarker(),
+			})
+				.setLngLat([sim.rx_lon, sim.rx_lat])
+				.setPopup(
+					new Popup({ offset: 25 }).setHTML(
+						`<h3>Rx site for ${sim.title}</h3>`,
 					),
 				)
 				.addTo(map.map);
 		}
 
 		// @ts-ignore
-		currentMarker.value.setLngLat([sim.lon, sim.lat]);
+		txMarker.value.setLngLat([sim.tx_lon, sim.tx_lat]);
+		// @ts-ignore
+		rxMarker.value.setLngLat([sim.rx_lon, sim.rx_lat]);
 	},
 	{ immediate: true, deep: true },
 );
@@ -174,18 +195,14 @@ async function runSimulation() {
 	notificationStore.addNotification({
 		type: "info",
 		message: "Starting simulation...",
-		title: "Coverage Simulation",
+		title: "LOS Simulation",
 		hideAfter: 5000,
 	});
 
 	try {
-		const predictRes = await store.fetchCoverageSimulation({
+		const predictRes = await store.fetchLosSimulation({
 			...simulation.value,
 			tx_power: 10 * Math.log10(simulation.value.tx_power) + 30,
-			radius: simulation.value.radius * 1000,
-			colormap: "plasma",
-			min_dbm: -130,
-			max_dbm: -80,
 		});
 
 		if (!predictRes.ok)
@@ -194,43 +211,77 @@ async function runSimulation() {
 		const predictData = await predictRes.json();
 		const taskId = predictData.task_id;
 
-		const status = await store.fetchSimulationStatus(taskId, 1000);
+		const data = await store.fetchSimulationStatus(taskId, 500);
+
+		const lossData = processLosData(data.data);
+
+		store.chart.data = [
+			{
+				name: "Elevation (m)",
+				data: lossData.profile,
+			},
+			{
+				name: "Earth curvature (m)",
+				data: lossData.curvature,
+			},
+			{
+				name: "Fresnel zone (m)",
+				data: lossData.fresnel,
+			},
+			{
+				name: "Point to point (m)",
+				data: lossData.reference,
+			}
+		];
+
+		store.chart.options = {
+			chart: {
+				type: "line",
+			},
+			stroke: {
+				curve: "smooth",
+				width: 1.2,
+			},
+			yaxis: {
+				decimalsInFloat: 0,
+			},
+			xaxis: {
+				categories: lossData.distance,
+				tickAmount: 10,
+				labels: {
+					formatter: (val: number) => {
+						if (!val) return "";
+
+						if (lossData.distance[lossData.distance.length - 1] > 10)
+							return val.toFixed(0);
+
+						return val.toFixed(1);
+					},
+				},
+			},
+		};
+
+		store.chart.show = true;
 
 		notificationStore.addNotification({
 			type: "success",
-			message: "Simulation completed successfully.",
-			title: "Coverage Simulation",
+			message: "Simulation finished",
+			title: "LOS Simulation",
 			hideAfter: 5000,
 		});
-
-		if (map.isLoaded && map.map) {
-			map.map.addSource(`coverage-${taskId}`, {
-				type: "raster",
-				tiles: [store.getMapWmsUrl(taskId)],
-				tileSize: 256,
-			});
-			map.map.addLayer({
-				id: `coverage-${taskId}`,
-				type: "raster",
-				source: `coverage-${taskId}`,
-				paint: {},
-			});
-		}
-	} catch (error) {
+	} catch (e) {
 		notificationStore.addNotification({
 			type: "error",
-			message: "Simulation failed!",
-			title: "Coverage Simulation",
+			message: "Simulation failed",
+			title: "LOS Simulation",
 			hideAfter: 5000,
 		});
-		console.error("Error during simulation:", error);
 	} finally {
 		isSimulationRunning.value = false;
 	}
 }
 
-// add location listener for selecting location on map
-function addLocationListener() {
+function addLocationListener(type: "tx" | "rx") {
 	if (!map.isLoaded || !map.map) return;
 
 	if (pickingLocation.value) {
@@ -247,11 +298,11 @@ function addLocationListener() {
 	locationPickerSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
 		pickingLocation.value = false;
-		simulation.value.lat = Number(lat.toFixed(10));
-		simulation.value.lon = Number(lng.toFixed(10));
+		simulation.value[`${type}_lat`] = Number(lat.toFixed(10));
+		simulation.value[`${type}_lon`] = Number(lng.toFixed(10));
 
-		if (currentMarker.value) {
-			currentMarker.value.setLngLat([
+		if (txMarker.value) {
+			txMarker.value.setLngLat([
 				Number(lng.toFixed(10)),
 				Number(lat.toFixed(10)),
 			]);
@@ -264,20 +315,22 @@ function addLocationListener() {
 	});
 }
 
-// fly to current marker
-function flyToCurrentMarker() {
+function flyToMarker(lon: number, lat: number) {
 	if (!map.isLoaded || !map.map) return;
 
 	map.map.flyTo({
-		center: [simulation.value.lon, simulation.value.lat],
+		center: [lon, lat],
 		zoom: 15,
 	});
 }
 
 // remove all markers on umount
 onBeforeUnmount(() => {
-	if (currentMarker.value) {
-		currentMarker.value.remove();
+	if (txMarker.value) {
+		txMarker.value.remove();
+	}
+	if (rxMarker.value) {
+		rxMarker.value.remove();
 	}
 });
 </script>

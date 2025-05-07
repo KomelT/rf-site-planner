@@ -1,15 +1,30 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { CoverageSimulatorPayload } from "./types.ts";
+import type { CoverageSimulatorPayload, LosSimulatorPayload } from "./types.ts";
 
 const useStore = defineStore("store", {
 	state() {
 		return {
 			mobileMenuOpen: ref(true),
 			mapStyle: ref("openstreetmap"),
+			chart: ref({
+				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+				data: [] as { name: string; data: any[] }[],
+				options: {},
+				show: false,
+			}),
 		};
 	},
 	actions: {
+		fetchLosSimulation(payload: LosSimulatorPayload) {
+			return fetch(`${import.meta.env.VITE_API_URL}/predict/los`, {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(payload),
+			});
+		},
 		fetchCoverageSimulation(payload: CoverageSimulatorPayload) {
 			return fetch(`${import.meta.env.VITE_API_URL}/predict/coverage`, {
 				method: "POST",
@@ -22,7 +37,7 @@ const useStore = defineStore("store", {
 		fetchSimulationStatus(
 			taskId: string,
 			intervalTime = 2000,
-		): Promise<Response> {
+		): Promise<{ status: string; data: string }> {
 			return new Promise((resolve, reject) => {
 				try {
 					const interval = setInterval(async () => {
@@ -37,7 +52,7 @@ const useStore = defineStore("store", {
 						switch (data.status) {
 							case "completed":
 								clearInterval(interval);
-								resolve(res);
+								resolve(data);
 								break;
 							case "failed":
 								clearInterval(interval);

@@ -194,7 +194,7 @@ async function runSimulation() {
 		const predictData = await predictRes.json();
 		const taskId = predictData.task_id;
 
-		const status = await store.fetchSimulationStatus(taskId, 1000);
+		await store.fetchSimulationStatus(taskId, 1000);
 
 		notificationStore.addNotification({
 			type: "success",

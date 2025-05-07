@@ -69,7 +69,7 @@ export function processLosData(data: string): {
 		reducedFresnel.unshift(fresnel[0]);
 		reducedReference.unshift(reference[0]);
 	}
-	
+
 	return {
 		distance: reducedDistance,
 		profile: reducedProfile,

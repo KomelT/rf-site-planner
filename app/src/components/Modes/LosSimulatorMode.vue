@@ -231,7 +231,7 @@ async function runSimulation() {
 			{
 				name: "Point to point (m)",
 				data: lossData.reference,
-			}
+			},
 		];
 
 		store.chart.options = {

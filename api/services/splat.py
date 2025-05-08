@@ -212,6 +212,7 @@ class Splat:
                 logger.info("SPLAT! coverage prediction completed successfully.")
 
                 # save all files from tmpdir to /var/app/geoserver_data
+                """
                 for filename in os.listdir(tmpdir):
                     if filename.endswith(".kml") or filename.endswith(".ppm"):
                         continue
@@ -220,6 +221,7 @@ class Splat:
                     with open(src_path, "rb") as src_file:
                         with open(dst_path, "wb") as dst_file:
                             dst_file.write(src_file.read())
+                """
 
                 with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
                     with open(

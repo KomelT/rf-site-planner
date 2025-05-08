@@ -6,7 +6,7 @@
 				<InputText title="Simulation title" v-model:value="simulation.title"
 					:placeholder="'Simulation ' + (simulations.length + 1)" />
 			</div>
-			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
+			<ModeDataAccordian title="Transmitter options" markerColor="#3FB1CE" v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
 					<InputNumber title="Latitude" v-model:value="simulation.lat" />
 					<InputNumber title="Longtitude" v-model:value="simulation.lon" />
@@ -69,7 +69,6 @@
 import { useMap } from "@indoorequal/vue-maplibre-gl";
 import { Marker, Popup, type Subscription } from "maplibre-gl";
 import { type Ref, computed, onBeforeUnmount, ref, watch } from "vue";
-import redPinMarker from "../../assets/redPinMarker";
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
@@ -149,9 +148,7 @@ watch(
 		if (!map.isLoaded || !map.map) return;
 
 		if (!currentMarker.value) {
-			currentMarker.value = new Marker({
-				element: redPinMarker(),
-			})
+			currentMarker.value = new Marker()
 				.setLngLat([sim.lon, sim.lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(

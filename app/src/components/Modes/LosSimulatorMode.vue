@@ -6,14 +6,14 @@
 				<InputText title="Simulation title" v-model:value="simulation.title"
 					:placeholder="'Simulation ' + (simulations.length + 1)" />
 			</div>
-			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
+			<ModeDataAccordian title="Transmitter options" markerColor="red" v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
 					<InputNumber title="Latitude" v-model:value="simulation.tx_lat" />
 					<InputNumber title="Longtitude" v-model:value="simulation.tx_lon" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener('tx')"
-						:class="pickingLocation ? 'bg-red-600' : ''" />
+					<Button :text="txPickingLocation ? 'Cancel picking' : 'Pick location on map'"
+						@click="addLocationListener('tx')" :class="txPickingLocation ? 'bg-red-600' : ''" />
 					<Button text="Fly to coordinates" @click="flyToMarker(simulation.tx_lon, simulation.tx_lat)" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
@@ -25,14 +25,14 @@
 					<InputNumber title="Gain (dB)" v-model:value="simulation.tx_gain" />
 				</div>
 			</ModeDataAccordian>
-			<ModeDataAccordian title="Reciver options" v-model:showSection="showSections.receiver">
+			<ModeDataAccordian title="Reciver options" markerColor="#3FB1CE" v-model:showSection="showSections.receiver">
 				<div class="flex flex-row gap-2">
 					<InputNumber title="Latitude" v-model:value="simulation.rx_lat" />
 					<InputNumber title="Longtitude" v-model:value="simulation.rx_lon" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener('rx')"
-						:class="pickingLocation ? 'bg-red-600' : ''" />
+					<Button :text="rxPickingLocation ? 'Cancel picking' : 'Pick location on map'"
+						@click="addLocationListener('rx')" :class="rxPickingLocation ? 'bg-red-600' : ''" />
 					<Button text="Fly to coordinates" @click="flyToMarker(simulation.rx_lon, simulation.rx_lat)" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
@@ -75,7 +75,6 @@
 import { useMap } from "@indoorequal/vue-maplibre-gl";
 import { Marker, Popup, type Subscription } from "maplibre-gl";
 import { type Ref, computed, onBeforeUnmount, ref, watch } from "vue";
-import redPinMarker from "../../assets/redPinMarker";
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
@@ -96,7 +95,8 @@ const notificationStore = useNotificationStore();
 
 const txMarker = ref<Marker | null>(null);
 const rxMarker = ref<Marker | null>(null);
-const pickingLocation = ref(false);
+const txPickingLocation = ref(false);
+const rxPickingLocation = ref(false);
 const isSimulationRunning = ref(false);
 const locationPickerSubscription = ref<Subscription | null>(null);
 
@@ -155,9 +155,7 @@ watch(
 		if (!map.isLoaded || !map.map) return;
 
 		if (!txMarker.value) {
-			txMarker.value = new Marker({
-				element: redPinMarker(),
-			})
+			txMarker.value = new Marker({ color: "red" })
 				.setLngLat([sim.tx_lon, sim.tx_lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(
@@ -168,9 +166,7 @@ watch(
 		}
 
 		if (!rxMarker.value) {
-			rxMarker.value = new Marker({
-				element: redPinMarker(),
-			})
+			rxMarker.value = new Marker()
 				.setLngLat([sim.rx_lon, sim.rx_lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(
@@ -284,8 +280,8 @@ async function runSimulation() {
 function addLocationListener(type: "tx" | "rx") {
 	if (!map.isLoaded || !map.map) return;
 
-	if (pickingLocation.value) {
-		pickingLocation.value = false;
+	if (type === "tx" && txPickingLocation.value) {
+		txPickingLocation.value = false;
 		if (locationPickerSubscription.value) {
 			locationPickerSubscription.value.unsubscribe();
 			locationPickerSubscription.value = null;
@@ -293,11 +289,30 @@ function addLocationListener(type: "tx" | "rx") {
 		return;
 	}
 
-	pickingLocation.value = true;
+	if (type === "rx" && rxPickingLocation.value) {
+		rxPickingLocation.value = false;
+		if (locationPickerSubscription.value) {
+			locationPickerSubscription.value.unsubscribe();
+			locationPickerSubscription.value = null;
+		}
+		return;
+	}
+
+	if (type === "tx") {
+		txPickingLocation.value = true;
+	} else {
+		rxPickingLocation.value = true;
+	}
 
 	locationPickerSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
-		pickingLocation.value = false;
+
+		if (type === "tx") {
+			txPickingLocation.value = false;
+		} else {
+			rxPickingLocation.value = false;
+		}
+
 		simulation.value[`${type}_lat`] = Number(lat.toFixed(10));
 		simulation.value[`${type}_lon`] = Number(lng.toFixed(10));
 

@@ -3,6 +3,7 @@
 		<MglNavigationControl position="top-left" />
 		<MglGeolocateControl position="top-left" />
 		<LayerSelectorControl position="top-right" />
+		<LosChart position="top-right" />
 	</MglMap>
 </template>
 <script setup lang="ts">
@@ -15,6 +16,7 @@ import {
 import { computed } from "vue";
 import { useStore } from "../stores/store";
 import LayerSelectorControl from "./Map/LayerSelectorControl.vue";
+import LosChart from "./Map/LosChart.vue";
 
 const store = useStore();
 

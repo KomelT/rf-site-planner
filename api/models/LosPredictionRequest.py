@@ -6,12 +6,12 @@ from pydantic import BaseModel, Field
 AVAILABLE_COLORMAPS = plt.colormaps()
 
 
-class CoveragePredictionRequest(BaseModel):
+class LosPredictionRequest(BaseModel):
     # Transmitter
-    lat: float = Field(
+    tx_lat: float = Field(
         ge=-90, le=90, description="Transmitter latitude in degrees (-90 to 90)"
     )
-    lon: float = Field(
+    tx_lon: float = Field(
         ge=-180, le=180, description="Transmitter longitude in degrees (-180 to 180)"
     )
     tx_height: float = Field(
@@ -24,6 +24,12 @@ class CoveragePredictionRequest(BaseModel):
     )
 
     # Receiver
+    rx_lat: float = Field(
+        ge=-90, le=90, description="Receiver latitude in degrees (-90 to 90)"
+    )
+    rx_lon: float = Field(
+        ge=-180, le=180, description="Receiver longitude in degrees (-180 to 180)"
+    )
     rx_height: float = Field(
         1, ge=1, description="Receiver height above ground in meters (>= 1 m)"
     )
@@ -49,9 +55,6 @@ class CoveragePredictionRequest(BaseModel):
     )
 
     # Model Settings
-    radius: float = Field(
-        1000.0, ge=1, description="Model maximum range in meters (>= 1 m)"
-    )
     system_loss: Optional[float] = Field(
         0.0, ge=0, description="System loss in dB (default: 0.0)"
     )
@@ -85,19 +88,7 @@ class CoveragePredictionRequest(BaseModel):
     )
 
     # Output Settings
-    colormap: Literal[tuple(AVAILABLE_COLORMAPS)] = Field(
-        "rainbow",
-        description=f"Matplotlib colormap to use. Available options: {', '.join(AVAILABLE_COLORMAPS)}",
-    )
-    min_dbm: float = Field(
-        -130.0,
-        description="Minimum dBm value for the colormap (default: -130.0).",
-    )
-    max_dbm: float = Field(
-        -30.0,
-        description="Maximum dBm value for the colormap (default: -30.0).",
-    )
     high_resolution: bool = Field(
         False,
-        description="Use optional 1-arcsecond / 30 meter resolution  terrain tiles instead of the default 3-arcsecond / 90 meter (default: False).",
+        description="Use optional 1-arcsecond / 30 meter resolution terrain tiles instead of the default 3-arcsecond / 90 meter (default: False).",
     )

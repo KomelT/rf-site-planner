@@ -19,6 +19,7 @@
 		"@tailwindcss/forms": "^0.5.10",
 		"@tailwindcss/postcss": "^4.0.17",
 		"@vueuse/core": "^12.4.0",
+		"apexcharts": "^4.7.0",
 		"autoprefixer": "^10.4.21",
 		"maplibre-gl": "^5.3.0",
 		"pinia": "^2.3.0",
@@ -26,6 +27,7 @@
 		"randanimal": "^1.0.4",
 		"tailwindcss": "^4.0.17",
 		"vue": "^3.5.13",
+		"vue3-apexcharts": "^1.8.0",
 		"vue3-popper": "^1.5.0"
 	},
 	"devDependencies": {

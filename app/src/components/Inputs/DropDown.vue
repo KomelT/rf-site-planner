@@ -3,7 +3,7 @@
     <ListboxLabel class="block text-sm/6 font-medium text-gray-200">{{ props.title }}</ListboxLabel>
     <div class="relative mt-0.5">
       <ListboxButton
-        class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 outline outline-1 -outline-offset-1 outline-gray-300 focus:outline focus:outline-2 focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
+        class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 outline -outline-offset-1 outline-gray-300 focus:outline focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
         <span class="col-start-1 row-start-1 truncate pr-6">{{ selected.title }}</span>
         <ChevronUpDownIcon class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 sm:size-4"
           aria-hidden="true" />
@@ -16,12 +16,12 @@
           <ListboxOption as="template" v-for="option in props.options" :key="option.id" :value="option"
             v-slot="{ active, selected }">
             <li
-              :class="[active ? 'bg-indigo-600 text-white outline-none' : 'text-gray-900', 'relative cursor-default select-none py-2 pl-3 pr-9']">
-              <span :class="[selected ? 'font-semibold' : 'font-normal', 'block truncate']">{{ option.title }}</span>
+              :class="[selected ? 'bg-indigo-500 text-white outline-none' : 'text-gray-900', active ? 'bg-indigo-600 text-white outline-none' : 'text-gray-900', 'relative cursor-default select-none py-2 pl-3 pr-9']">
+              <span class="block truncate">{{ option.title }}</span>
 
-              <span v-if="selected"
-                :class="[active ? 'text-white' : 'text-indigo-600', 'absolute inset-y-0 right-0 flex items-center pr-4']">
-                <CheckIcon class="size-5" aria-hidden="true" />
+              <span v-if="props.deleteBtn" class="absolute inset-y-0 right-0 flex items-center pr-4">
+                <MinusIcon class="size-5 bg-red-500 text-white rounded-sm cursor-pointer"
+                  @click="emit('delete:option', option.id)" aria-hidden="true" />
               </span>
             </li>
           </ListboxOption>
@@ -39,18 +39,18 @@ import {
 	ListboxOption,
 	ListboxOptions,
 } from "@headlessui/vue";
-import { ChevronUpDownIcon } from "@heroicons/vue/16/solid";
-import { CheckIcon } from "@heroicons/vue/20/solid";
+import { ChevronUpDownIcon, MinusIcon } from "@heroicons/vue/16/solid";
 import { computed } from "vue";
 
 export type DropDownProps = {
 	title: string;
 	options: Array<{ id?: number | string; title: string }>;
 	selected?: { id: number; title: string };
+	deleteBtn?: boolean;
 };
 
 const props = defineProps<DropDownProps>();
-const emit = defineEmits(["update:selected"]);
+const emit = defineEmits(["update:selected", "delete:option"]);
 
 const selected = computed({
 	get: () => {

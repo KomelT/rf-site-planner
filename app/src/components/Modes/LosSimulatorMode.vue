@@ -1,10 +1,17 @@
 <template>
 	<div>
-		<DropDown title="Simulations" :options="simulationsOptions" />
+		<div class="grid grid-cols-7 gap-2 mt-3 items-end">
+			<div class="col-span-5">
+				<DropDown title="Simulations" :options="simulationsOptions" @update:selected="changeCurrentSimulation"
+					:deleteBtn="true" @delete:option="removeSimulation" />
+			</div>
+			<div class="col-span-2">
+				<Button text="Add new" @click="addSimulation()" class="w-full" />
+			</div>
+		</div>
 		<form>
 			<div class="mt-3">
-				<InputText title="Simulation title" v-model:value="simulation.title"
-					:placeholder="'Simulation ' + (simulations.length + 1)" />
+				<InputText title="Simulation title" v-model:value="simulation.title" placeholder="Simulation name" />
 			</div>
 			<ModeDataAccordian title="Transmitter options" markerColor="red" v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
@@ -74,7 +81,14 @@
 <script setup lang="ts">
 import { useMap } from "@indoorequal/vue-maplibre-gl";
 import { Marker, Popup, type Subscription } from "maplibre-gl";
-import { type Ref, computed, onBeforeUnmount, ref, watch } from "vue";
+import {
+	type ComputedRef,
+	type Ref,
+	computed,
+	onBeforeUnmount,
+	ref,
+	watch,
+} from "vue";
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
@@ -109,34 +123,36 @@ const showSections = ref({
 
 const simulations: Ref<LosSimulatorSite[]> = ref([]);
 
-const defautltSimulationValues: LosSimulatorSite = {
-	id: `simulation-${simulations.value.length}`,
-	title: `Simulation ${simulations.value.length}`,
-	tx_lat: 45.85473269336,
-	tx_lon: 13.72616645611,
-	tx_height: 2,
-	tx_power: 0.1,
-	tx_gain: 2,
-	frequency_mhz: 868.5,
-	rx_lat: 45.8579440425,
-	rx_lon: 13.7040361677,
-	rx_height: 2,
-	rx_gain: 2,
-	system_loss: 2,
-	signal_threshold: -130,
-	radio_climate: "continental_temperate",
-	polarization: "vertical",
-	clutter_height: 0.9,
-	ground_dielectric: 15,
-	ground_conductivity: 0.005,
-	atmosphere_bending: 301,
-	situation_fraction: 95,
-	time_fraction: 95,
-	high_resolution: false,
-};
+const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
+	return {
+		id: simulations.value.length.toString(),
+		title: `Simulation ${simulations.value.length}`,
+		tx_lat: 45.85473269336,
+		tx_lon: 13.72616645611,
+		tx_height: 2,
+		tx_power: 0.1,
+		tx_gain: 2,
+		frequency_mhz: 868.5,
+		rx_lat: 45.8579440425,
+		rx_lon: 13.7040361677,
+		rx_height: 2,
+		rx_gain: 2,
+		system_loss: 2,
+		signal_threshold: -130,
+		radio_climate: "continental_temperate",
+		polarization: "vertical",
+		clutter_height: 0.9,
+		ground_dielectric: 15,
+		ground_conductivity: 0.005,
+		atmosphere_bending: 301,
+		situation_fraction: 95,
+		time_fraction: 95,
+		high_resolution: false,
+	};
+});
 
 if (simulations.value.length === 0) {
-	simulations.value.push(defautltSimulationValues);
+	simulations.value.push(defautltSimulationValues.value);
 }
 
 const simulationsOptions = computed(() => {
@@ -146,7 +162,7 @@ const simulationsOptions = computed(() => {
 	}));
 });
 
-const simulation: Ref<LosSimulatorSite> = ref(defautltSimulationValues);
+const simulation: Ref<LosSimulatorSite> = ref(simulations.value[0]);
 
 // watch for current simulation changes
 watch(
@@ -277,6 +293,7 @@ async function runSimulation() {
 	}
 }
 
+// add location listener for selecting location on map
 function addLocationListener(type: "tx" | "rx") {
 	if (!map.isLoaded || !map.map) return;
 
@@ -337,6 +354,50 @@ function flyToMarker(lon: number, lat: number) {
 		center: [lon, lat],
 		zoom: 15,
 	});
+}
+
+function addSimulation() {
+	simulations.value.push(defautltSimulationValues.value);
+	console.log(simulations.value[simulations.value.length - 1]);
+	simulation.value = simulations.value[simulations.value.length - 1];
+}
+
+function changeCurrentSimulation(sim: { id: string; title: string }) {
+	const index = simulations.value.findIndex(
+		(simulation) => simulation.id === sim.id,
+	);
+	if (index !== -1) {
+		simulation.value = simulations.value[index];
+	}
+
+	txMarker.value?.setLngLat([simulation.value.tx_lon, simulation.value.tx_lat]);
+	rxMarker.value?.setLngLat([simulation.value.rx_lon, simulation.value.rx_lat]);
+}
+
+function removeSimulation(id: string) {
+	if (!map.isLoaded || !map.map) return;
+
+	if (simulations.value.length === 1) {
+		notificationStore.addNotification({
+			type: "error",
+			message: "You need at least one simulation.",
+			title: "Coverage Simulation",
+			hideAfter: 5000,
+		});
+		return;
+	}
+
+	const index = simulations.value.findIndex((sim) => sim.id === id);
+	if (index !== -1) {
+		simulations.value.splice(index, 1);
+	}
+
+	try {
+		map.map?.removeLayer(`coverage-${id}`);
+		map.map?.removeSource(`coverage-${id}`);
+	} catch (e) {
+		console.error(`Error removing layer: ${id}`);
+	}
 }
 
 // remove all markers on umount

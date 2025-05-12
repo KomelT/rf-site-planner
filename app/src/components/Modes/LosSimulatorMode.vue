@@ -358,7 +358,6 @@ function flyToMarker(lon: number, lat: number) {
 
 function addSimulation() {
 	simulations.value.push(defautltSimulationValues.value);
-	console.log(simulations.value[simulations.value.length - 1]);
 	simulation.value = simulations.value[simulations.value.length - 1];
 }
 

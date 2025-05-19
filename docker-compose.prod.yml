@@ -1,8 +1,6 @@
 services:
   app:
-    build:
-      context: app
-      dockerfile: dockerfile
+    image: komelt/rf-site-planner-app:latest
     volumes:
       - ./app:/var/app
       - ./app/dist:/var/app/dist
@@ -10,9 +8,7 @@ services:
       - .env.prod
 
   api:
-    build:
-      context: api
-      dockerfile: dockerfile
+    image: komelt/rf-site-planner-api:latest
     restart: unless-stopped
     volumes:
       - ./api:/var/app
@@ -53,3 +49,15 @@ services:
         condition: service_started
       geoserver:
         condition: service_started
+
+  watchtower:
+    image: containrrr/watchtower:latest
+    container_name: watchtower
+    hostname: rf-planner
+    environment:
+      TZ: "Europe/Ljubljana"
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_SCHEDULE: "* 30 * * * *"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always

@@ -85,3 +85,25 @@ export const polarizationOptions = ref([
 	{ id: "vertical", title: "Vertical" },
 	{ id: "horizontal", title: "Horizontal" },
 ]);
+
+export type CenterNodeSimulatorPayload = {
+	lat: number;
+	lon: number;
+	tx_height: number;
+	tx_power: number;
+	tx_gain: number;
+	frequency_mhz: number;
+	recivers: {
+		id: string;
+		name: string;
+		lat: number;
+		lon: number;
+		height: number;
+		gain: number;
+	}[];
+};
+
+export type CenterNodeSimulatorSite = CenterNodeSimulatorPayload & {
+	id: string;
+	title: string;
+};

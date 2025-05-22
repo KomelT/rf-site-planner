@@ -40,7 +40,7 @@ import {
 	ListboxOptions,
 } from "@headlessui/vue";
 import { ChevronUpDownIcon, MinusIcon } from "@heroicons/vue/16/solid";
-import { computed, type Ref, ref } from "vue";
+import { type Ref, computed, ref } from "vue";
 
 export type DropDownProps = {
 	title: string;
@@ -52,7 +52,9 @@ export type DropDownProps = {
 const props = defineProps<DropDownProps>();
 const emit = defineEmits(["update:selected", "delete:option"]);
 
-const select: Ref<{ id?: string | number | undefined; title: string; }> = ref(props.options[0]);
+const select: Ref<{ id?: string | number | undefined; title: string }> = ref(
+	props.options[0],
+);
 
 const selected = computed({
 	get: () => {
@@ -60,7 +62,7 @@ const selected = computed({
 	},
 	set: (value) => {
 		emit("update:selected", value);
-    select.value = value;
+		select.value = value;
 	},
 });
 </script>

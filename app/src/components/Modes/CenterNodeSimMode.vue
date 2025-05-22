@@ -81,10 +81,10 @@ const isSimulationRunning = ref(false);
 const locationPickerSubscription = ref<Subscription | null>(null);
 
 const showSections = ref({
-  transmitter: true,
-  receivers: true,
-  enviroment: false,
-  simulationsOptions: false,
+	transmitter: true,
+	receivers: true,
+	enviroment: false,
+	simulationsOptions: false,
 });
 
 const markers: Ref<Marker[]> = ref([]);
@@ -92,169 +92,169 @@ const markers: Ref<Marker[]> = ref([]);
 const simulations: Ref<CenterNodeSimulatorSite[]> = ref([]);
 
 const defautltSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
-  () => {
-    return {
-      id: simulations.value.length.toString(),
-      title: `Simulation ${simulations.value.length}`,
-      lat: 0,
-      lon: 0,
-      tx_power: 0.1,
-      frequency_mhz: 868.5,
-      tx_height: 2,
-      tx_gain: 2,
-      recivers: [
-        {
-          id: randomHexColor(),
-          name: "Receiver 1",
-          lat: 45.8481696198,
-          lon: 13.7311562054,
-          gain: 2,
-          height: 2,
-        },
-        {
-          id: randomHexColor(),
-          name: "Receiver 2",
-          lat: 45.8467440547,
-          lon: 13.72315913,
-          gain: 2,
-          height: 2,
-        },
-      ],
-    };
-  },
+	() => {
+		return {
+			id: simulations.value.length.toString(),
+			title: `Simulation ${simulations.value.length}`,
+			lat: 0,
+			lon: 0,
+			tx_power: 0.1,
+			frequency_mhz: 868.5,
+			tx_height: 2,
+			tx_gain: 2,
+			recivers: [
+				{
+					id: randomHexColor(),
+					name: "Receiver 1",
+					lat: 45.8481696198,
+					lon: 13.7311562054,
+					gain: 2,
+					height: 2,
+				},
+				{
+					id: randomHexColor(),
+					name: "Receiver 2",
+					lat: 45.8467440547,
+					lon: 13.72315913,
+					gain: 2,
+					height: 2,
+				},
+			],
+		};
+	},
 );
 
 if (simulations.value.length === 0) {
-  simulations.value.push(defautltSimulationValues.value);
+	simulations.value.push(defautltSimulationValues.value);
 }
 
 const currentReceiver = ref(simulations.value[0].recivers[0]);
 
 const simulationsOptions = computed(() => {
-  return simulations.value.map((simulation) => ({
-    id: simulation.id,
-    title: simulation.title,
-  }));
+	return simulations.value.map((simulation) => ({
+		id: simulation.id,
+		title: simulation.title,
+	}));
 });
 
 const simulationReceivers = computed(() => {
-  return simulations.value[0].recivers.map((reciver) => ({
-    id: reciver.id,
-    title: reciver.name,
-  }));
+	return simulations.value[0].recivers.map((reciver) => ({
+		id: reciver.id,
+		title: reciver.name,
+	}));
 });
 
 const simulation: Ref<CenterNodeSimulatorSite> = ref(simulations.value[0]);
 
 // watch for current simulation changes
 watch(
-  simulation,
-  (sim) => {
-    if (!map.isLoaded || !map.map) return;
+	simulation,
+	(sim) => {
+		if (!map.isLoaded || !map.map) return;
 
-    // remove all markers
-    for (const marker of markers.value) {
-      marker.remove();
-    }
+		// remove all markers
+		for (const marker of markers.value) {
+			marker.remove();
+		}
 
-    markers.value = [];
+		markers.value = [];
 
-    // add new markers according to the simulation
-    for (const reciver of simulation.value.recivers) {
-      if (!map.map) continue;
+		// add new markers according to the simulation
+		for (const reciver of simulation.value.recivers) {
+			if (!map.map) continue;
 
-      const marker = new Marker({
-        color: reciver.id,
-      })
-        .setLngLat([reciver.lon, reciver.lat])
-        .addTo(map.map);
+			const marker = new Marker({
+				color: reciver.id,
+			})
+				.setLngLat([reciver.lon, reciver.lat])
+				.addTo(map.map);
 
-      markers.value.push(marker);
+			markers.value.push(marker);
 
-      const popup = new Popup({ offset: 25 })
-        .setHTML(
-          `<div class="text-sm text-center">
+			const popup = new Popup({ offset: 25 })
+				.setHTML(
+					`<div class="text-sm text-center">
             <p>Receiver</p>
             <p>Gain: ${reciver.gain} dB</p>
             <p>Height: ${reciver.height} m</p>
           </div>`,
-        )
-        .setMaxWidth("300px");
+				)
+				.setMaxWidth("300px");
 
-      marker.setPopup(popup);
+			marker.setPopup(popup);
 
-      popup.addTo(map.map);
-    }
-  },
-  { immediate: true, deep: true },
+			popup.addTo(map.map);
+		}
+	},
+	{ immediate: true, deep: true },
 );
 
 function addReceiverLocationListener() {
-  if (!map.isLoaded || !map.map) return;
+	if (!map.isLoaded || !map.map) return;
 
-  if (pickingReceiverLocation.value) {
-    pickingReceiverLocation.value = false;
-    if (locationPickerSubscription.value) {
-      locationPickerSubscription.value.unsubscribe();
-      locationPickerSubscription.value = null;
-    }
-    return;
-  }
+	if (pickingReceiverLocation.value) {
+		pickingReceiverLocation.value = false;
+		if (locationPickerSubscription.value) {
+			locationPickerSubscription.value.unsubscribe();
+			locationPickerSubscription.value = null;
+		}
+		return;
+	}
 
-  pickingReceiverLocation.value = true;
+	pickingReceiverLocation.value = true;
 
-  locationPickerSubscription.value = map.map.on("click", (e) => {
-    const { lng, lat } = e.lngLat;
-    pickingReceiverLocation.value = false;
+	locationPickerSubscription.value = map.map.on("click", (e) => {
+		const { lng, lat } = e.lngLat;
+		pickingReceiverLocation.value = false;
 
-    if (currentReceiver.value) {
-      currentReceiver.value.lat = Number(lat.toFixed(10));
-      currentReceiver.value.lon = Number(lng.toFixed(10));
-    }
+		if (currentReceiver.value) {
+			currentReceiver.value.lat = Number(lat.toFixed(10));
+			currentReceiver.value.lon = Number(lng.toFixed(10));
+		}
 
-    if (locationPickerSubscription.value) {
-      locationPickerSubscription.value.unsubscribe();
-      locationPickerSubscription.value = null;
-    }
-  });
+		if (locationPickerSubscription.value) {
+			locationPickerSubscription.value.unsubscribe();
+			locationPickerSubscription.value = null;
+		}
+	});
 }
 
 function flyToNode(lat: number, lon: number) {
-  if (lat === 0 || lon === 0) return;
-  map.map?.flyTo({
-    center: [lon, lat],
-    zoom: 18,
-  });
+	if (lat === 0 || lon === 0) return;
+	map.map?.flyTo({
+		center: [lon, lat],
+		zoom: 18,
+	});
 }
 
 function changeCurrentReceiver(receiver: { id: string; title: string }) {
-  const receiverIndex = simulation.value.recivers.findIndex(
-    (sim) => sim.id === receiver.id,
-  );
-  if (receiverIndex === -1) return;
-  currentReceiver.value = simulation.value.recivers[receiverIndex];
+	const receiverIndex = simulation.value.recivers.findIndex(
+		(sim) => sim.id === receiver.id,
+	);
+	if (receiverIndex === -1) return;
+	currentReceiver.value = simulation.value.recivers[receiverIndex];
 }
 
 function removeReceiver(id: string) {
-  const receiverIndex = simulation.value.recivers.findIndex(
-    (sim) => sim.id === id,
-  );
-  if (receiverIndex === -1) return;
-  simulation.value.recivers.splice(receiverIndex, 1);
+	const receiverIndex = simulation.value.recivers.findIndex(
+		(sim) => sim.id === id,
+	);
+	if (receiverIndex === -1) return;
+	simulation.value.recivers.splice(receiverIndex, 1);
 }
 
 function addReceiver() {
-  simulation.value.recivers.push({
-    id: randomHexColor(),
-    name: `Receiver ${simulation.value.recivers.length + 1}`,
-    lat: simulation.value.lat,
-    lon: simulation.value.lon,
-    gain: 2,
-    height: 2,
-  });
+	simulation.value.recivers.push({
+		id: randomHexColor(),
+		name: `Receiver ${simulation.value.recivers.length + 1}`,
+		lat: simulation.value.lat,
+		lon: simulation.value.lon,
+		gain: 2,
+		height: 2,
+	});
 }
 
 function runSimulation() {
-  console.log("Running simulation");
+	console.log("Running simulation");
 }
 </script>

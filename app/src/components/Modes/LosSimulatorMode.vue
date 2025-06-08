@@ -317,28 +317,32 @@ function addLocationListener(type: "tx" | "rx") {
 
 	if (type === "tx") {
 		txPickingLocation.value = true;
-	} else {
+		rxPickingLocation.value = false;
+	} else if (type === "rx") {
 		rxPickingLocation.value = true;
+		txPickingLocation.value = false;
 	}
 
 	locationPickerSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
 
-		if (type === "tx") {
-			txPickingLocation.value = false;
-		} else {
-			rxPickingLocation.value = false;
-		}
-
 		simulation.value[`${type}_lat`] = Number(lat.toFixed(10));
 		simulation.value[`${type}_lon`] = Number(lng.toFixed(10));
 
-		if (txMarker.value) {
+		if (txPickingLocation && txMarker.value) {
 			txMarker.value.setLngLat([
 				Number(lng.toFixed(10)),
 				Number(lat.toFixed(10)),
 			]);
+		} else if (rxPickingLocation && rxMarker.value) {
+			rxMarker.value.setLngLat([
+				Number(lng.toFixed(10)),
+				Number(lat.toFixed(10)),
+			]);
 		}
+
+		txPickingLocation.value = false;
+		rxPickingLocation.value = false;
 
 		if (locationPickerSubscription.value) {
 			locationPickerSubscription.value.unsubscribe();

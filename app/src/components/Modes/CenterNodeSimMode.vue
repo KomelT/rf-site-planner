@@ -272,9 +272,9 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-function changeCurrentSimulation(simulation: { id: string; title: string }) {}
+function changeCurrentSimulation() {}
 
-function removeSimulation(id: string) {
+function removeSimulation() {
 }
 
 function addSimulation() {
@@ -420,7 +420,6 @@ async function runSimulation() {
 			hideAfter: 5000,
 		});
 
-		const res = ref<{ task_id: string; data: LosSimulatorResponse }[]>();
 		const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
 
 		store.centralNodeTable.data = [];

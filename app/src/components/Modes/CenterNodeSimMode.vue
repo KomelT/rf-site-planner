@@ -272,6 +272,14 @@ watch(
 	{ immediate: true, deep: true },
 );
 
+function changeCurrentSimulation(simulation: { id: string; title: string }) {}
+
+function removeSimulation(id: string) {
+}
+
+function addSimulation() {
+}
+
 function addTransmitterLocationListener() {
 	if (!map.isLoaded || !map.map) return;
 
@@ -339,6 +347,7 @@ function flyToNode(lat: number, lon: number) {
 		zoom: 18,
 	});
 }
+
 
 function changeCurrentTransmitter(transmitter: { id: string; title: string }) {
 	const transmitterIndex = simulation.value.transmitter.findIndex(

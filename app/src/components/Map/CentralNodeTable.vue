@@ -9,7 +9,7 @@
       </thead>
       <tbody>
         <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-          <td v-for="(cell, cellIndex) in row" :key="cellIndex">{{ cell }}</td>
+          <td v-for="(cell, cellIndex) in row" class="px-1" :key="cellIndex">{{ cell }}</td>
         </tr>
       </tbody>
     </table>

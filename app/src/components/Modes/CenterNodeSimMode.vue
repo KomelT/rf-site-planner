@@ -62,6 +62,10 @@
 						@click="addReceiverLocationListener()" :class="pickingReceiverLocation ? 'bg-red-600' : ''" />
 					<Button text="Fly to coordinates" @click="flyToNode(currentReceiver.lat, currentReceiver.lon)" />
 				</div>
+				<div class="flex flex-row gap-2 mt-3">
+					<InputNumber title="Height (m)" v-model:value="currentReceiver.height" />
+					<InputNumber title="Gain (dB)" v-model:value="currentReceiver.gain" />
+				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
 				<div class="flex flex-row gap-2">
@@ -93,7 +97,14 @@
 <script setup lang="ts">
 import { useMap } from "@indoorequal/vue-maplibre-gl";
 import { Marker, Popup, type Subscription } from "maplibre-gl";
-import { type ComputedRef, type Ref, computed, ref, watch } from "vue";
+import {
+	type ComputedRef,
+	type Ref,
+	computed,
+	onBeforeUnmount,
+	ref,
+	watch,
+} from "vue";
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
@@ -274,11 +285,9 @@ watch(
 
 function changeCurrentSimulation() {}
 
-function removeSimulation() {
-}
+function removeSimulation() {}
 
-function addSimulation() {
-}
+function addSimulation() {}
 
 function addTransmitterLocationListener() {
 	if (!map.isLoaded || !map.map) return;
@@ -348,11 +357,11 @@ function flyToNode(lat: number, lon: number) {
 	});
 }
 
-
 function changeCurrentTransmitter(transmitter: { id: string; title: string }) {
 	const transmitterIndex = simulation.value.transmitter.findIndex(
 		(sim) => sim.id === transmitter.id,
 	);
+
 	if (transmitterIndex === -1) return;
 	currentTransmitter.value = simulation.value.transmitter[transmitterIndex];
 }
@@ -361,6 +370,7 @@ function changeCurrentReceiver(receiver: { id: string; title: string }) {
 	const receiverIndex = simulation.value.recivers.findIndex(
 		(sim) => sim.id === receiver.id,
 	);
+
 	if (receiverIndex === -1) return;
 	currentReceiver.value = simulation.value.recivers[receiverIndex];
 }
@@ -369,6 +379,7 @@ function removeTransmitter(id: string) {
 	const transmitterIndex = simulation.value.transmitter.findIndex(
 		(sim) => sim.id === id,
 	);
+
 	if (transmitterIndex === -1) return;
 	simulation.value.transmitter.splice(transmitterIndex, 1);
 }
@@ -416,8 +427,8 @@ async function runSimulation() {
 		notificationStore.addNotification({
 			type: "info",
 			message: "Starting simulation...",
-			title: "LOS Simulation",
-			hideAfter: 5000,
+			title: "Center Node Simulation",
+			hideAfter: 2000,
 		});
 
 		const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
@@ -466,7 +477,7 @@ async function runSimulation() {
 					notificationStore.addNotification({
 						type: "error",
 						message: `Error starting simulation, between ${transmitter.name} and ${receiver.name}: ${error}`,
-						title: "LOS Simulation",
+						title: "Center Node Simulation",
 						hideAfter: 5000,
 					});
 					isSimulationRunning.value = false;
@@ -482,8 +493,8 @@ async function runSimulation() {
 				notificationStore.addNotification({
 					type: "success",
 					message: `Simulation result, between ${simulation.value.transmitter.find((val) => val.id === task.tx)?.name ?? task.tx} and ${simulation.value.recivers.find((val) => val.id === task.rx)?.name ?? task.rx} fetched successfully.`,
-					title: "LOS Simulation",
-					hideAfter: 5000,
+					title: "Center Node Simulation",
+					hideAfter: 2000,
 				});
 
 				const tx_id = tasks.value.find((val) => val.id === task.id)?.tx;
@@ -507,7 +518,7 @@ async function runSimulation() {
 				notificationStore.addNotification({
 					type: "error",
 					message: `Error fetching simulation result for task ${task.id}: ${error}`,
-					title: "LOS Simulation",
+					title: "Center Node Simulation",
 					hideAfter: 5000,
 				});
 			}
@@ -517,10 +528,21 @@ async function runSimulation() {
 		notificationStore.addNotification({
 			type: "error",
 			message: `Error running simulation: ${error}`,
-			title: "LOS Simulation",
+			title: "Center Node Simulation",
 			hideAfter: 5000,
 		});
 		isSimulationRunning.value = false;
 	}
 }
+
+onBeforeUnmount(() => {
+	for (const marker of markers.value) {
+		marker.remove();
+	}
+
+	locationPickerSubscription.value?.unsubscribe();
+
+	store.centralNodeTable.data.splice(0, store.centralNodeTable.data.length);
+	store.centralNodeTable.show = false;
+});
 </script>

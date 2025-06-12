@@ -17,6 +17,7 @@
 		<ModeWrapper v-else :title="selectedModeText" @backButtonClick="toggleSim()">
 			<CoverageSimulatorMode v-if="showSim.showCoverageSim" />
 			<LosSimulatorMode v-else-if="showSim.showLosSim" />
+			<CenterNodeSimMode v-else-if="showSim.showCenterNodeSim" />
 		</ModeWrapper>
 	</div>
 </template>
@@ -24,6 +25,7 @@
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref } from "vue";
 import { useStore } from "../../stores/store";
+import CenterNodeSimMode from "../Modes/CenterNodeSimMode.vue";
 import CoverageSimulatorMode from "../Modes/CoverageSimulatorMode.vue";
 import LosSimulatorMode from "../Modes/LosSimulatorMode.vue";
 import ModeWrapper from "../Modes/ModeWrapper.vue";
@@ -34,6 +36,7 @@ const store = useStore();
 const showSim = ref({
 	showCoverageSim: false,
 	showLosSim: false,
+	showCenterNodeSim: false,
 });
 
 type ShowSimKeys = keyof typeof showSim.value;
@@ -68,6 +71,15 @@ const modes = [
 		onClick: () => {
 			toggleSim("showLosSim");
 			selectedModeText.value = "Line Of Sight simulator";
+		},
+	},
+	{
+		title: "Center node sim.",
+		description: "Simulate center node of a network",
+		image: import("../../assets/center-node-simulator.png"),
+		onClick: () => {
+			toggleSim("showCenterNodeSim");
+			selectedModeText.value = "Center node simulator";
 		},
 	},
 ];

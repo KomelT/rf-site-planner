@@ -927,6 +927,11 @@ graceful-fs@^4.2.4:
   resolved "https://registry.yarnpkg.com/graceful-fs/-/graceful-fs-4.2.11.tgz#4183e4e8bf08bb6e05bbb2f7d2e0c8f712ca40e3"
   integrity sha512-RbJ5/jmFcNNCcDV5o9eTnBLJ/HszWV0P73bc+Ff4nS/rJj+YaS6IGyiOL0VoBYX+l1Wrl3k63h/KrH+nhJ0XvQ==
 
+gridjs-vue@^5.0.4:
+  version "5.0.4"
+  resolved "https://registry.yarnpkg.com/gridjs-vue/-/gridjs-vue-5.0.4.tgz#b34e28ea7914a4cce312924f021ab3523e7698dd"
+  integrity sha512-g1XS7uaUcgKzezgyEAn2GvGCd3Pi8x9SHoSrbSV9M5FP46udAzVR97Qs7eH9duuAoRDCNrILiJ3uJS+sTNeN8Q==
+
 he@^1.2.0:
   version "1.2.0"
   resolved "https://registry.yarnpkg.com/he/-/he-1.2.0.tgz#84ae65fa7eafb165fddb61566ae14baf05664f0f"

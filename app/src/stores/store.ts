@@ -1,6 +1,10 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
-import type { CoverageSimulatorPayload, LosSimulatorPayload } from "./types.ts";
+import type {
+	CoverageSimulatorPayload,
+	LosSimulatorPayload,
+	LosSimulatorResponseUpdated,
+} from "./types.ts";
 
 const useStore = defineStore("store", {
 	state() {
@@ -10,6 +14,11 @@ const useStore = defineStore("store", {
 			chart: ref({
 				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 				data: [] as { name: string; data: any[] }[],
+				options: {},
+				show: false,
+			}),
+			centralNodeTable: ref({
+				data: [] as LosSimulatorResponseUpdated[],
 				options: {},
 				show: false,
 			}),

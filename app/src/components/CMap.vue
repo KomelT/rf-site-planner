@@ -4,6 +4,7 @@
 		<MglGeolocateControl position="top-left" />
 		<LayerSelectorControl position="top-right" />
 		<LosChart position="top-right" />
+		<CentralNodeTable position="top-right" />
 	</MglMap>
 </template>
 <script setup lang="ts">
@@ -15,6 +16,7 @@ import {
 } from "@indoorequal/vue-maplibre-gl";
 import { computed } from "vue";
 import { useStore } from "../stores/store";
+import CentralNodeTable from "./Map/CentralNodeTable.vue";
 import LayerSelectorControl from "./Map/LayerSelectorControl.vue";
 import LosChart from "./Map/LosChart.vue";
 

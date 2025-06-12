@@ -40,6 +40,31 @@ export type LosSimulatorSite = LosSimulatorPayload & {
 	title: string;
 };
 
+export type LosSimulatorResponse = {
+	distance: number[];
+	profile: number[];
+	curvature: number[];
+	fresnel: number[];
+	reference: number[];
+	path: {
+		obstructed: boolean;
+		message: string;
+		obstructions: number[];
+	};
+	first_fresnel: {
+		obstructed: boolean;
+		message: string;
+	};
+	rx_signal_power: number;
+};
+
+export type LosSimulatorResponseUpdated = LosSimulatorResponse & {
+	tx_id: string;
+	tx_title: string;
+	rx_id: string;
+	rx_title: string;
+};
+
 export type CoverageSimulatorPayload = {
 	lat: number;
 	lon: number;
@@ -85,3 +110,40 @@ export const polarizationOptions = ref([
 	{ id: "vertical", title: "Vertical" },
 	{ id: "horizontal", title: "Horizontal" },
 ]);
+
+export type CenterNodeSimulatorPayload = {
+	frequency_mhz: number;
+	signal_threshold: number;
+	clutter_height: number;
+	ground_dielectric: number;
+	ground_conductivity: number;
+	atmosphere_bending: number;
+	system_loss: number;
+	radio_climate: RadioClimate;
+	polarization: Polarization;
+	situation_fraction: number;
+	time_fraction: number;
+	high_resolution: boolean;
+	transmitter: {
+		id: string;
+		name: string;
+		lat: number;
+		lon: number;
+		height: number;
+		gain: number;
+		power: number;
+	}[];
+	recivers: {
+		id: string;
+		name: string;
+		lat: number;
+		lon: number;
+		height: number;
+		gain: number;
+	}[];
+};
+
+export type CenterNodeSimulatorSite = CenterNodeSimulatorPayload & {
+	id: string;
+	title: string;
+};

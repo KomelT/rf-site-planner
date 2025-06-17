@@ -92,6 +92,7 @@ import {
 import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
+	type LosSimulatorResponse,
 	type LosSimulatorSite,
 	climateOptions,
 	polarizationOptions,
@@ -129,14 +130,14 @@ const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 		title: `Simulation ${simulations.value.length}`,
 		tx_lat: 45.85473269336,
 		tx_lon: 13.72616645611,
-		tx_height: 2,
+		tx_height: 4,
 		tx_power: 0.1,
-		tx_gain: 2,
+		tx_gain: 5,
 		frequency_mhz: 868.5,
-		rx_lat: 45.8579440425,
-		rx_lon: 13.7040361677,
-		rx_height: 2,
-		rx_gain: 2,
+		rx_lat: 45.843544567,
+		rx_lon: 13.7343341751,
+		rx_height: 15,
+		rx_gain: 6.5,
 		system_loss: 2,
 		signal_threshold: -130,
 		radio_climate: "continental_temperate",
@@ -224,25 +225,31 @@ async function runSimulation() {
 		const taskId = predictData.task_id;
 
 		const data = await store.fetchSimulationStatus(taskId, 500);
+		const lossData = JSON.parse(data.data) as unknown as LosSimulatorResponse;
 
-		const lossData = processLosData(data.data);
+		store.chart.rx_signal_power = lossData.rx_signal_power;
+		store.chart.path.obstructed = lossData.path.obstructed;
+		store.chart.path.message = lossData.path.message;
+		store.chart.path.obstructions = lossData.path.obstructions;
+
+		const lossProcessedData = processLosData(lossData);
 
 		store.chart.data = [
 			{
 				name: "Elevation (m)",
-				data: lossData.profile,
+				data: lossProcessedData.profile,
 			},
 			{
 				name: "Earth curvature (m)",
-				data: lossData.curvature,
+				data: lossProcessedData.curvature,
 			},
 			{
 				name: "Fresnel zone (m)",
-				data: lossData.fresnel,
+				data: lossProcessedData.fresnel,
 			},
 			{
 				name: "Point to point (m)",
-				data: lossData.reference,
+				data: lossProcessedData.reference,
 			},
 		];
 
@@ -258,13 +265,17 @@ async function runSimulation() {
 				decimalsInFloat: 0,
 			},
 			xaxis: {
-				categories: lossData.distance,
+				categories: lossProcessedData.distance,
 				tickAmount: 10,
 				labels: {
 					formatter: (val: number) => {
 						if (!val) return "";
 
-						if (lossData.distance[lossData.distance.length - 1] > 10)
+						if (
+							lossProcessedData.distance[
+								lossProcessedData.distance.length - 1
+							] > 10
+						)
 							return val.toFixed(0);
 
 						return val.toFixed(1);
@@ -405,6 +416,8 @@ function removeSimulation(id: string) {
 
 // remove all markers on umount
 onBeforeUnmount(() => {
+	store.chart.show = false;
+
 	if (txMarker.value) {
 		txMarker.value.remove();
 	}

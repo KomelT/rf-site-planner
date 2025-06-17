@@ -1,3 +1,5 @@
+import type { LosSimulatorResponse } from "./stores/types";
+
 // biome-ignore lint/suspicious/noExplicitAny: <explanation>
 export function cloneObject(item: any) {
 	return JSON.parse(JSON.stringify(item));
@@ -7,23 +9,21 @@ export function getUniqueId(): string {
 	return Math.random().toString(16).slice(2);
 }
 
-export function processLosData(data: string): {
+export function processLosData(data: LosSimulatorResponse): {
 	distance: number[];
 	profile: number[];
 	curvature: number[];
 	fresnel: number[];
 	reference: number[];
 } {
-	const parsed = JSON.parse(data);
-
-	if (parsed.distance.length <= 100) return parsed;
+	if (data.distance.length <= 100) return data;
 
 	// reduce data resolution to 100 points
-	const distance = parsed.distance as number[];
-	const profile = parsed.profile as number[];
-	const curvature = parsed.curvature as number[];
-	const fresnel = parsed.fresnel as number[];
-	const reference = parsed.reference as number[];
+	const distance = data.distance as number[];
+	const profile = data.profile as number[];
+	const curvature = data.curvature as number[];
+	const fresnel = data.fresnel as number[];
+	const reference = data.reference as number[];
 
 	const reducedDistance: number[] = [];
 	const reducedProfile: number[] = [];

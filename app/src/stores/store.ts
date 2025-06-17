@@ -3,6 +3,7 @@ import { ref } from "vue";
 import type {
 	CoverageSimulatorPayload,
 	LosSimulatorPayload,
+	LosSimulatorResponse,
 	LosSimulatorResponseUpdated,
 } from "./types.ts";
 
@@ -16,6 +17,12 @@ const useStore = defineStore("store", {
 				data: [] as { name: string; data: any[] }[],
 				options: {},
 				show: false,
+				rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
+				path: {
+					obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
+					message: ref<LosSimulatorResponse["path"]["message"]>(""),
+					obstructions: ref<LosSimulatorResponse["path"]["obstructions"]>([]),
+				},
 			}),
 			centralNodeTable: ref({
 				data: [] as LosSimulatorResponseUpdated[],

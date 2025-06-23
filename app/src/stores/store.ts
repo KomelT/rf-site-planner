@@ -88,7 +88,7 @@ const useStore = defineStore("store", {
 		fetchOverpassArea(
 			polygon: [number, number][],
 		): Promise<OverpassResponse[] | null> {
-			return new Promise((resolve, reject) => {
+			return new Promise((resolve) => {
 				const overpassUrl = "https://overpass-api.de/api/interpreter";
 
 				// Replace with your polygon: space-separated "lat lon" pairs (must form a closed loop)

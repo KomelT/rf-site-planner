@@ -87,8 +87,8 @@ import { useNotificationStore } from "../../stores/notification";
 import { useStore } from "../../stores/store";
 import {
 	type AreaCenterNodeSimulatorSite,
+	type LosSimulatorResponse,
 	climateOptions,
-	LosSimulatorResponse,
 	polarizationOptions,
 } from "../../stores/types";
 import { randomHexColor } from "../../utils";
@@ -386,7 +386,7 @@ async function runSimulation() {
 
 	if (res) {
 		res.forEach((element, i) => {
-			console.log(element.tags.name)
+			console.log(element.tags.name);
 			if (!element.tags.name || element.tags.name.trim() !== "")
 				res.splice(i, 1);
 		});
@@ -454,7 +454,7 @@ async function runSimulation() {
 					rx: receiver.id,
 				});
 
-				console.log(`${transmitter.tags.name} -> ${receiver.name}`)
+				console.log(`${transmitter.tags.name} -> ${receiver.name}`);
 			} catch (error) {
 				console.error("Error starting simulation:", error);
 				notificationStore.addNotification({
@@ -471,19 +471,24 @@ async function runSimulation() {
 
 	// Move the promises creation and resolution outside the loops
 	const taskPromises = tasks.value.map(async (task) => {
-		return new Promise(async (resolve) => {
-			const data = await store.fetchSimulationStatus(task.id, 100);
-			const tx_id = task.tx;
-			const rx_id = task.rx;
+		return new Promise((resolve) => {
+			store.fetchSimulationStatus(task.id, 100).then((data) => {
+				const tx_id = task.tx;
+				const rx_id = task.rx;
 
-			resolve({
-				...(JSON.parse(data.data) as unknown as LosSimulatorResponse),
-				tx_id: tx_id ?? "",
-				tx_title: res.find((val) => val.id.toString() === tx_id?.toString())?.tags.name ?? "",
-				rx_id: rx_id ?? "",
-				rx_title: simulation.value.recivers.find((val) => val.id === rx_id)?.name ?? "",
+				resolve({
+					...(JSON.parse(data.data) as unknown as LosSimulatorResponse),
+					tx_id: tx_id ?? "",
+					tx_title:
+						res.find((val) => val.id.toString() === tx_id?.toString())?.tags
+							.name ?? "",
+					rx_id: rx_id ?? "",
+					rx_title:
+						simulation.value.recivers.find((val) => val.id === rx_id)?.name ??
+						"",
+				});
 			});
-		})
+		});
 	});
 
 	store.centralNodeTable.show = true;
@@ -491,8 +496,16 @@ async function runSimulation() {
 	Promise.all(taskPromises).then((results) => {
 		isSimulationRunning.value = false;
 		store.centralNodeTable.data.push(
-			...results.filter((result): result is LosSimulatorResponse & { tx_id: string; tx_title: string; rx_id: string; rx_title: string } =>
-				result !== null && result !== undefined && typeof result === 'object'
+			...results.filter(
+				(
+					result,
+				): result is LosSimulatorResponse & {
+					tx_id: string;
+					tx_title: string;
+					rx_id: string;
+					rx_title: string;
+				} =>
+					result !== null && result !== undefined && typeof result === "object",
 			),
 		);
 	});

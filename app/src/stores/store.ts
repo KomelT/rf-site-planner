@@ -5,6 +5,7 @@ import type {
 	LosSimulatorPayload,
 	LosSimulatorResponse,
 	LosSimulatorResponseUpdated,
+	OverpassResponse,
 } from "./types.ts";
 
 const useStore = defineStore("store", {
@@ -83,6 +84,47 @@ const useStore = defineStore("store", {
 		},
 		getMapWmsUrl(taskId: string): string {
 			return `${import.meta.env.VITE_GEOSERVER_URL}/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:${taskId}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`;
+		},
+		fetchOverpassArea(
+			polygon: [number, number][],
+		): Promise<OverpassResponse[] | null> {
+			return new Promise((resolve, reject) => {
+				const overpassUrl = "https://overpass-api.de/api/interpreter";
+
+				// Replace with your polygon: space-separated "lat lon" pairs (must form a closed loop)
+				const poly = `${polygon.map((coord) => `${coord[1]} ${coord[0]}`).join(" ")} ${polygon[0].join(" ")}`;
+
+				// Overpass QL with filters
+				const query = `
+				[out:json][timeout:60];
+				(
+					node["natural"="peak"](poly:"${poly}");
+					node["man_made"="communications_tower"](poly:"${poly}");
+					way["man_made"="communications_tower"](poly:"${poly}");
+					relation["man_made"="communications_tower"](poly:"${poly}");
+				);
+				out body;
+				>;
+				out skel qt;
+				`;
+
+				fetch(overpassUrl, {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/x-www-form-urlencoded",
+					},
+					body: `data=${encodeURIComponent(query)}`,
+				})
+					.then((response) => response.json())
+					.then((data) => {
+						resolve(data.elements as OverpassResponse[]);
+					})
+					.catch((error) => {
+						console.log("Error fetching Overpass data:", error);
+						resolve(null);
+					});
+				return null;
+			});
 		},
 	},
 });

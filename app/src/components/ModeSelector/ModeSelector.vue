@@ -18,6 +18,7 @@
 			<CoverageSimulatorMode v-if="showSim.showCoverageSim" />
 			<LosSimulatorMode v-else-if="showSim.showLosSim" />
 			<CenterNodeSimMode v-else-if="showSim.showCenterNodeSim" />
+			<AreaCenterNodeSimMode v-else-if="showSim.showAreaCenterNodeSim" />
 		</ModeWrapper>
 	</div>
 </template>
@@ -25,6 +26,7 @@
 import { XMarkIcon } from "@heroicons/vue/24/outline";
 import { computed, ref } from "vue";
 import { useStore } from "../../stores/store";
+import AreaCenterNodeSimMode from "../Modes/AreaCenterNodeSimMode.vue";
 import CenterNodeSimMode from "../Modes/CenterNodeSimMode.vue";
 import CoverageSimulatorMode from "../Modes/CoverageSimulatorMode.vue";
 import LosSimulatorMode from "../Modes/LosSimulatorMode.vue";
@@ -37,6 +39,7 @@ const showSim = ref({
 	showCoverageSim: false,
 	showLosSim: false,
 	showCenterNodeSim: false,
+	showAreaCenterNodeSim: false,
 });
 
 type ShowSimKeys = keyof typeof showSim.value;
@@ -80,6 +83,15 @@ const modes = [
 		onClick: () => {
 			toggleSim("showCenterNodeSim");
 			selectedModeText.value = "Center node simulator";
+		},
+	},
+	{
+		title: "Area Center node sim.",
+		description: "Get best positionfor a center node of a network",
+		image: import("../../assets/center-node-simulator.png"),
+		onClick: () => {
+			toggleSim("showAreaCenterNodeSim");
+			selectedModeText.value = "Area Center node simulator";
 		},
 	},
 ];

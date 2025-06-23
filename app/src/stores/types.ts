@@ -147,3 +147,49 @@ export type CenterNodeSimulatorSite = CenterNodeSimulatorPayload & {
 	id: string;
 	title: string;
 };
+
+export type AreaCenterNodeSimulatorPayload = {
+	frequency_mhz: number;
+	signal_threshold: number;
+	clutter_height: number;
+	ground_dielectric: number;
+	ground_conductivity: number;
+	atmosphere_bending: number;
+	system_loss: number;
+	radio_climate: RadioClimate;
+	polarization: Polarization;
+	situation_fraction: number;
+	time_fraction: number;
+	high_resolution: boolean;
+	transmitter: {
+		height: number;
+		gain: number;
+		power: number;
+	};
+	recivers: {
+		id: string;
+		name: string;
+		lat: number;
+		lon: number;
+		height: number;
+		gain: number;
+	}[];
+};
+
+export type AreaCenterNodeSimulatorSite = AreaCenterNodeSimulatorPayload & {
+	id: string;
+	title: string;
+};
+
+export type OverpassResponse = {
+	id: number;
+	lat: number;
+	lon: number;
+	tags: {
+		alt_name: string;
+		ele: number;
+		name: string;
+		natural: string;
+		source: string;
+	};
+};

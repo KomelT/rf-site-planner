@@ -51,7 +51,7 @@ watch(
 
 			// Create rows based on tx_ids
 			rows.value = txIds.map((txId) => {
-				const row = [txId];
+				const row = [`${newData.find((val) => val.tx_id === txId)?.tx_title || txId}`];
 				for (const colId of cols.value) {
 					const value = newData.find(
 						(val) => val.tx_id === txId && val.rx_id === colId,

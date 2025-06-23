@@ -11,7 +11,7 @@ import { ArrowPathIcon } from "@heroicons/vue/24/outline";
 type ButtonProps = {
 	text: string;
 	onClick: () => void;
-	class?: string;
+	class?: string | string[];
 	loading?: boolean;
 	disabled?: boolean;
 };

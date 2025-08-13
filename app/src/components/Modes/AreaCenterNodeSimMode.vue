@@ -88,6 +88,7 @@ import { useStore } from "../../stores/store";
 import {
 	type AreaCenterNodeSimulatorSite,
 	type LosSimulatorResponse,
+	OverpassResponse,
 	climateOptions,
 	polarizationOptions,
 } from "../../stores/types";
@@ -231,15 +232,17 @@ watch(
 			marker.remove();
 		}
 
+		// remove all coordinates from geoJsonLine
+		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
+
 		for (const point of newPolygon) {
+			store.geoJsonLine.coordinates.push([point[0], point[1]]);
+
 			const marker = new Marker({
 				color: "#FF0000",
 			})
 				.setLngLat(point)
 				.addTo(map.map);
-			marker.on("click", () => {
-				console.log("Polygon point clicked", point);
-			});
 
 			polygonMarkers.value.push(marker);
 
@@ -384,15 +387,7 @@ async function runSimulation() {
 	isSimulationRunning.value = true;
 	const res = await store.fetchOverpassArea(areaPolygon.value);
 
-	if (res) {
-		res.forEach((element, i) => {
-			console.log(element.tags.name);
-			if (!element.tags.name || element.tags.name.trim() !== "")
-				res.splice(i, 1);
-		});
-	}
-
-	if (!res) {
+	if (!res || res.length === 0) {
 		notificationStore.addNotification({
 			type: "error",
 			message: "Failed to fetch area data.",
@@ -402,20 +397,16 @@ async function runSimulation() {
 		return;
 	}
 
-	if (res.length === 0) {
-		notificationStore.addNotification({
-			type: "error",
-			message: "No data found in the selected area.",
-			title: "Center Node Simulation",
-			hideAfter: 3000,
-		});
-		return;
-	}
+	const trans: OverpassResponse[] = res?.map((el) => {
+		if (!(!el.tags.name || el.tags.name.trim() === ""))
+			return el;
+		return undefined;
+	}).filter((el): el is OverpassResponse => el !== undefined)
 
 	const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
 	store.centralNodeTable.data = [];
 
-	for (const transmitter of res) {
+	for (const transmitter of trans) {
 		for (const receiver of simulation.value.recivers) {
 			try {
 				const predictRes = await store.fetchLosSimulation({
@@ -454,7 +445,6 @@ async function runSimulation() {
 					rx: receiver.id,
 				});
 
-				console.log(`${transmitter.tags.name} -> ${receiver.name}`);
 			} catch (error) {
 				console.error("Error starting simulation:", error);
 				notificationStore.addNotification({
@@ -519,6 +509,8 @@ onBeforeUnmount(() => {
 	for (const marker of polygonMarkers.value) {
 		marker.remove();
 	}
+
+	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
 
 	locationPickerSubscription.value?.unsubscribe();
 

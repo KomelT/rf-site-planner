@@ -5,7 +5,7 @@
 		<LayerSelectorControl position="top-right" />
 		<LosChart position="top-right" />
 		<CentralNodeTable position="top-right" />
-		<MglGeoJsonSource source-id="geojson" :data="geojson.data">
+		<MglGeoJsonSource source-id="geojson" :data="geojson as GeoJSON.GeoJSON">
 			<MglLineLayer layer-id="geojson" :layout="layout" :paint="paint" />
 		</MglGeoJsonSource>
 	</MglMap>
@@ -44,25 +44,23 @@ const paint = {
 import { watch } from "vue";
 
 const geojson = ref({
-	data: {
-		type: "FeatureCollection",
-		features: [
-			{
-				type: "Feature",
-				properties: {},
-				geometry: {
-					type: "LineString",
-					coordinates: store.geoJsonLine.coordinates
-				}
+	type: "FeatureCollection",
+	features: [
+		{
+			type: "Feature",
+			properties: {},
+			geometry: {
+				type: "LineString",
+				coordinates: store.geoJsonLine.coordinates
 			}
-		]
-	}
+		}
+	]
 });
 
 // Watch for changes in the coordinates
 watch(() => store.geoJsonLine.coordinates, (newCoordinates) => {
-	geojson.value.data.features[0].geometry.coordinates = newCoordinates;
-	geojson.value.data = { ...geojson.value.data };
+	geojson.value.features[0].geometry.coordinates = newCoordinates;
+	geojson.value = { ...geojson.value };
 }, { deep: true, immediate: true });
 </script>
 <style>

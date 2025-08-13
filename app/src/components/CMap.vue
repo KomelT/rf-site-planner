@@ -5,6 +5,9 @@
 		<LayerSelectorControl position="top-right" />
 		<LosChart position="top-right" />
 		<CentralNodeTable position="top-right" />
+		<MglGeoJsonSource source-id="geojson" :data="geojson.data">
+			<MglLineLayer layer-id="geojson" :layout="layout" :paint="paint" />
+		</MglGeoJsonSource>
 	</MglMap>
 </template>
 <script setup lang="ts">
@@ -13,8 +16,10 @@ import {
 	MglGeolocateControl,
 	MglMap,
 	MglNavigationControl,
+	MglGeoJsonSource,
+	MglLineLayer
 } from "@indoorequal/vue-maplibre-gl";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useStore } from "../stores/store";
 import CentralNodeTable from "./Map/CentralNodeTable.vue";
 import LayerSelectorControl from "./Map/LayerSelectorControl.vue";
@@ -25,6 +30,40 @@ const store = useStore();
 const mapStyle = computed(() => {
 	return `/map-styles/${store.mapStyle}.json`;
 });
+
+const layout = {
+	'line-join': 'round',
+	'line-cap': 'round'
+};
+
+const paint = {
+	'line-color': '#FF0000',
+	'line-width': 3
+};
+
+import { watch } from "vue";
+
+const geojson = ref({
+	data: {
+		type: "FeatureCollection",
+		features: [
+			{
+				type: "Feature",
+				properties: {},
+				geometry: {
+					type: "LineString",
+					coordinates: store.geoJsonLine.coordinates
+				}
+			}
+		]
+	}
+});
+
+// Watch for changes in the coordinates
+watch(() => store.geoJsonLine.coordinates, (newCoordinates) => {
+	geojson.value.data.features[0].geometry.coordinates = newCoordinates;
+	geojson.value.data = { ...geojson.value.data };
+}, { deep: true, immediate: true });
 </script>
 <style>
 .maplibregl-map {

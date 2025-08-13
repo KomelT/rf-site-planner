@@ -13,6 +13,7 @@
         </tr>
       </tbody>
     </table>
+		<DropDown title="Sort methods" :options="sortMethods" v-model="selectedSortMethod" />
   </MglCustomControl>
 </template>
 <script setup lang="ts">
@@ -20,10 +21,16 @@ import { MglCustomControl } from "@indoorequal/vue-maplibre-gl";
 import type { ControlPosition } from "maplibre-gl";
 import { ref, watch } from "vue";
 import { useStore } from "../../stores/store";
+import DropDown from "../Inputs/DropDown.vue";
 
 export type CentralNodetableProps = {
 	position: ControlPosition | undefined;
 };
+
+const sortMethods = [
+	{ id: "average", title: "Average"}
+]
+const selectedSortMethod = ref(sortMethods[0].id);
 
 const props = defineProps<CentralNodetableProps>();
 

@@ -30,6 +30,9 @@ const useStore = defineStore("store", {
 				options: {},
 				show: false,
 			}),
+			geoJsonLine: ref({
+				coordinates: [] as [number, number][],
+			})
 		};
 	},
 	actions: {

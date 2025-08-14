@@ -49,7 +49,7 @@ export type LosSimulatorResponse = {
 	path: {
 		obstructed: boolean;
 		message: string;
-		obstructions: number[];
+		obstructions: number[][];
 	};
 	first_fresnel: {
 		obstructed: boolean;

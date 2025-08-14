@@ -197,6 +197,10 @@ watch(
 		txMarker.value.setLngLat([sim.tx_lon, sim.tx_lat]);
 		// @ts-ignore
 		rxMarker.value.setLngLat([sim.rx_lon, sim.rx_lat]);
+
+		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
+		store.geoJsonLine.coordinates.push([sim.tx_lon, sim.tx_lat]);
+		store.geoJsonLine.coordinates.push([sim.rx_lon, sim.rx_lat]);
 	},
 	{ immediate: true, deep: true },
 );
@@ -232,6 +236,8 @@ async function runSimulation() {
 		store.chart.path.message = lossData.path.message;
 		store.chart.path.obstructions = lossData.path.obstructions;
 
+		console.log("Obstructions:", store.chart.path.obstructions);
+
 		const lossProcessedData = processLosData(lossData);
 
 		store.chart.data = [
@@ -263,26 +269,40 @@ async function runSimulation() {
 			},
 			yaxis: {
 				decimalsInFloat: 0,
+				min: 0,
 			},
 			xaxis: {
+				type: "numeric",
 				categories: lossProcessedData.distance,
 				tickAmount: 10,
 				labels: {
-					formatter: (val: number) => {
-						if (!val) return "";
+					formatter: (value: string, timestamp?: number, opts?: any): string | string[] => {
+						if (!value) return "";
 
 						if (
 							lossProcessedData.distance[
-								lossProcessedData.distance.length - 1
+							lossProcessedData.distance.length - 1
 							] > 10
 						)
-							return val.toFixed(0);
+							return parseFloat(value).toFixed(0);
 
-						return val.toFixed(1);
+						return parseFloat(value).toFixed(1);
 					},
 				},
 			},
+			annotations: {
+				xaxis: (store.chart.path.obstructions || []).map((obs) => {
+					const xValue = obs[2].toString();
+					return {
+						x: xValue,
+						borderColor: '#FF0000',
+						strokeDashArray: 6,
+					};
+				}),
+			},
 		};
+
+		console.log(store.chart.options.annotations);
 
 		store.chart.show = true;
 

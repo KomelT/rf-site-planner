@@ -7,6 +7,7 @@ import type {
 	LosSimulatorResponseUpdated,
 	OverpassResponse,
 } from "./types.ts";
+import { ApexOptions } from "apexcharts";
 
 const useStore = defineStore("store", {
 	state() {
@@ -16,7 +17,7 @@ const useStore = defineStore("store", {
 			chart: ref({
 				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 				data: [] as { name: string; data: any[] }[],
-				options: {},
+				options: {} as ApexOptions,
 				show: false,
 				rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
 				path: {

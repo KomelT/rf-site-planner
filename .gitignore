@@ -29,6 +29,9 @@ dist-ssr
 
 # Geoserver
 geoserver.d/data
+geoserver.d/workspaces/RF-SITE-PLANNER
+!geoserver.d/workspaces/RF-SITE-PLANNER/namespace.xml
+!geoserver.d/workspaces/RF-SITE-PLANNER/workspace.xml
 
 # Editor directories and files
 .idea

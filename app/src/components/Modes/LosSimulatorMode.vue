@@ -277,7 +277,7 @@ async function runSimulation() {
 				categories: lossProcessedData.distance,
 				tickAmount: 10,
 				labels: {
-					formatter: (value: string, timestamp?: number, opts?: any): string | string[] => {
+					formatter: (value: string): string | string[] => {
 						if (!value) return "";
 
 						if (
@@ -293,7 +293,7 @@ async function runSimulation() {
 			},
 			tooltip: {
 				x: {
-					formatter: (val: number, opts?: any): string => {
+					formatter: (val: number): string => {
 						const lenBetw = val
 						const pathLen = lossProcessedData.distance[lossProcessedData.distance.length - 1];
 

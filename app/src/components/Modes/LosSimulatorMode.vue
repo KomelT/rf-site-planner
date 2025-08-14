@@ -110,6 +110,7 @@ const notificationStore = useNotificationStore();
 
 const txMarker = ref<Marker | null>(null);
 const rxMarker = ref<Marker | null>(null);
+const betwMarker = ref<Marker | null>(null);
 const txPickingLocation = ref(false);
 const rxPickingLocation = ref(false);
 const isSimulationRunning = ref(false);
@@ -290,7 +291,30 @@ async function runSimulation() {
 					},
 				},
 			},
-			annotations: {
+			tooltip: {
+				x: {
+					formatter: (val: number, opts?: any): string => {
+						const lenBetw = val
+						const pathLen = lossProcessedData.distance[lossProcessedData.distance.length - 1];
+
+						const coordBetw = [
+							simulation.value.rx_lon + (simulation.value.tx_lon - simulation.value.rx_lon) * (lenBetw / pathLen),
+							simulation.value.rx_lat + (simulation.value.tx_lat - simulation.value.rx_lat) * (lenBetw / pathLen)
+						] as [number, number];
+
+						if (!betwMarker.value && map.map) {
+							betwMarker.value = new Marker({ color: "blue" })
+								.setLngLat(coordBetw)
+								.addTo(map.map);
+						} else if(betwMarker.value) {
+							betwMarker.value.setLngLat(coordBetw);
+						}
+
+						return val.toFixed(1);
+					},
+				}
+			}
+			/*annotations: {
 				xaxis: (store.chart.path.obstructions || []).map((obs) => {
 					const xValue = obs[2].toString();
 					return {
@@ -298,11 +322,10 @@ async function runSimulation() {
 						borderColor: '#FF0000',
 						strokeDashArray: 6,
 					};
+					
 				}),
-			},
+			},*/
 		};
-
-		console.log(store.chart.options.annotations);
 
 		store.chart.show = true;
 
@@ -441,8 +464,15 @@ onBeforeUnmount(() => {
 	if (txMarker.value) {
 		txMarker.value.remove();
 	}
+
 	if (rxMarker.value) {
 		rxMarker.value.remove();
 	}
+
+	if (betwMarker.value) {
+		betwMarker.value.remove();
+	}
+
+	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
 });
 </script>

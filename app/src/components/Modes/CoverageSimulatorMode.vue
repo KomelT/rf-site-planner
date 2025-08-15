@@ -13,7 +13,7 @@
 			<div class="mt-3">
 				<InputText title="Simulation title" v-model:value="simulation.title" placeholder="Simulation name" />
 			</div>
-			<ModeDataAccordian title="Transmitter options" markerColor="#3FB1CE"
+			<ModeDataAccordian title="Transmitter options" :markerColor="simulation.id"
 				v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
 					<InputNumber title="Latitude" v-model:value="simulation.lat" />
@@ -96,6 +96,7 @@ import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
+import { randomHexColor } from "../../utils";
 
 const map = useMap();
 const store = useStore();
@@ -118,18 +119,18 @@ const simulations: Ref<CoverageSimulatorSite[]> = ref([]);
 const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 	() => {
 		return {
-			id: simulations.value.length.toString(),
+			id: randomHexColor(),
 			title: `Simulation ${simulations.value.length}`,
 			lat: 45.85473269336,
 			lon: 13.72616645611,
 			tx_power: 0.1,
 			frequency_mhz: 868.5,
 			tx_height: 2,
-			tx_gain: 2,
-			rx_gain: 2,
-			rx_height: 1,
-			system_loss: 2,
-			signal_threshold: -130,
+			tx_gain: 5,
+			rx_gain: 5,
+			rx_height: 2,
+			system_loss: 1,
+			signal_threshold: -153,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
 			clutter_height: 0.9,
@@ -141,7 +142,7 @@ const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			radius: 30,
 			high_resolution: false,
 			colormap: "plasma",
-			min_dbm: -130,
+			min_dbm: -153,
 			max_dbm: -80,
 		};
 	},
@@ -167,7 +168,9 @@ watch(
 		if (!map.isLoaded || !map.map) return;
 
 		if (!currentMarker.value) {
-			currentMarker.value = new Marker()
+			currentMarker.value = new Marker({
+				color: simulation.value.id,
+			})
 				.setLngLat([sim.lon, sim.lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(
@@ -200,7 +203,7 @@ async function runSimulation() {
 			tx_power: 10 * Math.log10(simulation.value.tx_power) + 30,
 			radius: simulation.value.radius * 1000,
 			colormap: "plasma",
-			min_dbm: -130,
+			min_dbm: simulation.value.signal_threshold,
 			max_dbm: -80,
 		});
 
@@ -209,8 +212,6 @@ async function runSimulation() {
 
 		const predictData = await predictRes.json();
 		const taskId = predictData.task_id;
-
-		simulation.value.id = taskId;
 
 		await store.fetchSimulationStatus(taskId, 1000);
 
@@ -222,15 +223,21 @@ async function runSimulation() {
 		});
 
 		if (map.isLoaded && map.map) {
-			map.map.addSource(`coverage-${taskId}`, {
+
+			if (map.map.getSource(`coverage-${simulation.value.id}`)) {
+				map.map.removeLayer(`coverage-${simulation.value.id}`);
+				map.map.removeSource(`coverage-${simulation.value.id}`);
+			}
+
+			map.map.addSource(`coverage-${simulation.value.id}`, {
 				type: "raster",
 				tiles: [store.getMapWmsUrl(taskId)],
 				tileSize: 256,
 			});
 			map.map.addLayer({
-				id: `coverage-${taskId}`,
+				id: `coverage-${simulation.value.id}`,
 				type: "raster",
-				source: `coverage-${taskId}`,
+				source: `coverage-${simulation.value.id}`,
 				paint: {},
 			});
 		}

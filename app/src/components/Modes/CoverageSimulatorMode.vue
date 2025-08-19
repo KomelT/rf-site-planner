@@ -10,8 +10,10 @@
 			</div>
 		</div>
 		<form>
-			<div class="mt-3">
+			<div class="mt-3 flex flex-row gap-2">
 				<InputText title="Simulation title" v-model:value="simulation.title" placeholder="Simulation name" />
+				<InputNumber title="Opacity" v-model:value="simulation.opacity" @change="updateOpacity" :min="0" :max="1"
+					:step="0.1" placeholder="Opacity" />
 			</div>
 			<ModeDataAccordian title="Transmitter options" :markerColor="simulation.id"
 				v-model:showSection="showSections.transmitter">
@@ -121,6 +123,7 @@ const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 		return {
 			id: randomHexColor(),
 			title: `Simulation ${simulations.value.length}`,
+			opacity: 0.2,
 			lat: 45.85473269336,
 			lon: 13.72616645611,
 			tx_power: 0.1,
@@ -238,7 +241,9 @@ async function runSimulation() {
 				id: `coverage-${simulation.value.id}`,
 				type: "raster",
 				source: `coverage-${simulation.value.id}`,
-				paint: {},
+				paint: {
+					"raster-opacity": simulation.value.opacity,
+				},
 			});
 		}
 	} catch (error) {
@@ -338,6 +343,12 @@ function removeSimulation(id: string) {
 	} catch (e) {
 		console.error(`Error removing layer: ${id}`);
 	}
+}
+
+function updateOpacity() {
+	if (!map.map) return;
+
+	map.map.setPaintProperty(`coverage-${simulation.value.id}`, "raster-opacity", simulation.value.opacity);
 }
 
 // remove all uneded stuff before umount

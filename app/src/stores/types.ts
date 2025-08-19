@@ -94,6 +94,7 @@ export type CoverageSimulatorPayload = {
 export type CoverageSimulatorSite = CoverageSimulatorPayload & {
 	id: string;
 	title: string;
+	opacity: number;
 };
 
 export const climateOptions = ref([

@@ -104,7 +104,7 @@ const map = useMap();
 const store = useStore();
 const notificationStore = useNotificationStore();
 
-const currentMarker = ref<Marker | null>(null);
+const markers = ref<Marker[]>([]);
 const pickingLocation = ref(false);
 const isSimulationRunning = ref(false);
 const locationPickerSubscription = ref<Subscription | null>(null);
@@ -166,25 +166,25 @@ const simulation: Ref<CoverageSimulatorSite> = ref(simulations.value[0]);
 
 // watch for current simulation changes
 watch(
-	simulation,
-	(sim) => {
+	simulations,
+	(_sim) => {
 		if (!map.isLoaded || !map.map) return;
 
-		if (!currentMarker.value) {
-			currentMarker.value = new Marker({
-				color: simulation.value.id,
+		markers.value.forEach((marker) => marker.remove());
+		markers.value = [];
+
+		for (const sim of simulations.value.values()) {
+			markers.value.push(new Marker({
+				color: sim.id,
 			})
 				.setLngLat([sim.lon, sim.lat])
 				.setPopup(
 					new Popup({ offset: 25 }).setHTML(
-						`<h3>${sim.title}</h3><p>Power: ${sim.tx_power} W</p><p>Frequency: ${sim.frequency_mhz} MHz</p>`,
+						`<h3><b>${sim.title}</b></h3><p>Power: ${sim.tx_power} W</p><p>Frequency: ${sim.frequency_mhz} MHz</p>`,
 					),
 				)
-				.addTo(map.map);
+				.addTo(map.map));
 		}
-
-		// @ts-ignore
-		currentMarker.value.setLngLat([sim.lon, sim.lat]);
 	},
 	{ immediate: true, deep: true },
 );
@@ -280,12 +280,10 @@ function addLocationListener() {
 		simulation.value.lat = Number(lat.toFixed(10));
 		simulation.value.lon = Number(lng.toFixed(10));
 
-		if (currentMarker.value) {
-			currentMarker.value.setLngLat([
-				Number(lng.toFixed(10)),
-				Number(lat.toFixed(10)),
-			]);
-		}
+		markers.value.find((marker) => marker.getElement().style.color === simulation.value.id)?.setLngLat([
+			Number(lng.toFixed(10)),
+			Number(lat.toFixed(10)),
+		]);
 
 		if (locationPickerSubscription.value) {
 			locationPickerSubscription.value.unsubscribe();
@@ -316,7 +314,11 @@ function changeCurrentSimulation(sim: { id: string; title: string }) {
 		simulation.value = simulations.value[index];
 	}
 
-	currentMarker.value?.setLngLat([simulation.value.lon, simulation.value.lat]);
+	// @ts-ignore
+	markers.value.find((marker) => marker.getElement().style.color === simulation.value.id)?.setLngLat([
+		Number(simulation.value.lon.toFixed(10)),
+		Number(simulation.value.lat.toFixed(10)),
+	]);
 }
 
 function removeSimulation(id: string) {
@@ -353,7 +355,7 @@ function updateOpacity() {
 
 // remove all uneded stuff before umount
 onBeforeUnmount(() => {
-	currentMarker.value?.remove();
+	markers.value.forEach((marker) => marker.remove());
 
 	locationPickerSubscription.value?.unsubscribe();
 	locationPickerSubscription.value = null;

@@ -20,3 +20,7 @@ body {
 	background: transparent !important;
 	border: none !important;
 }
+
+.maplibregl-popup-content {
+	color: black !important;
+}

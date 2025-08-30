@@ -1,18 +1,22 @@
 services:
   app:
-    image: komelt/rf-site-planner-app:latest
+    build:
+      context: app
+      dockerfile: dockerfile
     volumes:
       - ./app/dist:/var/app/dist
     env_file:
       - .env.prod
 
   api:
-    image: komelt/rf-site-planner-api:latest
+    build:
+      context: api
+      dockerfile: dockerfile
     restart: unless-stopped
     volumes:
       - ./geoserver.d/data:/var/app/geoserver_data
     ports:
-      - 8081:8080
+      - 8080:8080
     env_file:
       .env.prod
     depends_on:
@@ -33,6 +37,8 @@ services:
       - ./geoserver.d/workspaces/RF-SITE-PLANNER:/opt/geoserver_data/workspaces/RF-SITE-PLANNER
     env_file:
       .env.prod
+    ports:
+      - 8081:8080
 
   nginx:
     image: nginx:alpine

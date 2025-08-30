@@ -95,6 +95,7 @@ export type CoverageSimulatorSite = CoverageSimulatorPayload & {
 	id: string;
 	title: string;
 	opacity: number;
+	wmsUrl?: string;
 };
 
 export const climateOptions = ref([

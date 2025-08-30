@@ -99,6 +99,7 @@ import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
 import { randomHexColor } from "../../utils";
+import { onBeforeMount } from "vue";
 
 const map = useMap();
 const store = useStore();
@@ -116,14 +117,12 @@ const showSections = ref({
 	simulationsOptions: false,
 });
 
-const simulations: Ref<CoverageSimulatorSite[]> = ref([]);
-
 const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 	() => {
 		return {
 			id: randomHexColor(),
-			title: `Simulation ${simulations.value.length}`,
-			opacity: 0.2,
+			title: `Simulation ${store.coverSimModeData.simulations.length}`,
+			opacity: 0.7,
 			lat: 45.85473269336,
 			lon: 13.72616645611,
 			tx_power: 0.1,
@@ -151,29 +150,29 @@ const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 	},
 );
 
-if (simulations.value.length === 0) {
-	simulations.value.push(defautltSimulationValues.value);
+if (store.coverSimModeData.simulations.length === 0) {
+	store.coverSimModeData.simulations.push(defautltSimulationValues.value);
 }
 
 const simulationsOptions = computed(() => {
-	return simulations.value.map((simulation) => ({
+	return store.coverSimModeData.simulations.map((simulation) => ({
 		id: simulation.id,
 		title: simulation.title,
 	}));
 });
 
-const simulation: Ref<CoverageSimulatorSite> = ref(simulations.value[0]);
+const simulation: Ref<CoverageSimulatorSite> = ref(store.coverSimModeData.simulations[0]);
 
 // watch for current simulation changes
 watch(
-	simulations,
+	store.coverSimModeData.simulations,
 	(_sim) => {
 		if (!map.isLoaded || !map.map) return;
 
 		markers.value.forEach((marker) => marker.remove());
 		markers.value = [];
 
-		for (const sim of simulations.value.values()) {
+		for (const sim of store.coverSimModeData.simulations.values()) {
 			markers.value.push(new Marker({
 				color: sim.id,
 			})
@@ -225,27 +224,39 @@ async function runSimulation() {
 			hideAfter: 5000,
 		});
 
-		if (map.isLoaded && map.map) {
+		if (!map.isLoaded || !map.map) return;
 
-			if (map.map.getSource(`coverage-${simulation.value.id}`)) {
-				map.map.removeLayer(`coverage-${simulation.value.id}`);
-				map.map.removeSource(`coverage-${simulation.value.id}`);
-			}
-
-			map.map.addSource(`coverage-${simulation.value.id}`, {
-				type: "raster",
-				tiles: [store.getMapWmsUrl(taskId)],
-				tileSize: 256,
-			});
-			map.map.addLayer({
-				id: `coverage-${simulation.value.id}`,
-				type: "raster",
-				source: `coverage-${simulation.value.id}`,
-				paint: {
-					"raster-opacity": simulation.value.opacity,
-				},
-			});
+		console.log(simulation.value.wmsUrl);
+		if (simulation.value.wmsUrl) {
+			const url = new URL(simulation.value.wmsUrl);
+			console.log(url);
+			const res = await store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
+			res.ok
+				? console.log("Previous simulation deleted successfully.")
+				: console.error("Failed to delete previous simulation.");
 		}
+
+		if (map.map.getSource(`coverage-${simulation.value.id}`)) {
+			map.map.removeLayer(`coverage-${simulation.value.id}`);
+			map.map.removeSource(`coverage-${simulation.value.id}`);
+		}
+
+		simulation.value.wmsUrl = store.getMapWmsUrl(taskId);
+
+		map.map.addSource(`coverage-${simulation.value.id}`, {
+			type: "raster",
+			tiles: [simulation.value.wmsUrl],
+			tileSize: 256,
+		});
+		map.map.addLayer({
+			id: `coverage-${simulation.value.id}`,
+			type: "raster",
+			source: `coverage-${simulation.value.id}`,
+			paint: {
+				"raster-opacity": simulation.value.opacity,
+			},
+		});
+
 	} catch (error) {
 		notificationStore.addNotification({
 			type: "error",
@@ -302,16 +313,16 @@ function flyToCurrentMarker() {
 }
 
 function addSimulation() {
-	simulations.value.push(defautltSimulationValues.value);
-	simulation.value = simulations.value[simulations.value.length - 1];
+	store.coverSimModeData.simulations.push(defautltSimulationValues.value);
+	simulation.value = store.coverSimModeData.simulations[store.coverSimModeData.simulations.length - 1];
 }
 
 function changeCurrentSimulation(sim: { id: string; title: string }) {
-	const index = simulations.value.findIndex(
+	const index = store.coverSimModeData.simulations.findIndex(
 		(simulation) => simulation.id === sim.id,
 	);
 	if (index !== -1) {
-		simulation.value = simulations.value[index];
+		simulation.value = store.coverSimModeData.simulations[index];
 	}
 
 	// @ts-ignore
@@ -324,7 +335,7 @@ function changeCurrentSimulation(sim: { id: string; title: string }) {
 function removeSimulation(id: string) {
 	if (!map.isLoaded || !map.map) return;
 
-	if (simulations.value.length === 1) {
+	if (store.coverSimModeData.simulations.length === 1) {
 		notificationStore.addNotification({
 			type: "error",
 			message: "You need at least one simulation.",
@@ -334,9 +345,13 @@ function removeSimulation(id: string) {
 		return;
 	}
 
-	const index = simulations.value.findIndex((sim) => sim.id === id);
+	const index = store.coverSimModeData.simulations.findIndex((sim) => sim.id === id);
 	if (index !== -1) {
-		simulations.value.splice(index, 1);
+		if (store.coverSimModeData.simulations[index].wmsUrl) {
+			const url = new URL(store.coverSimModeData.simulations[index].wmsUrl)
+			store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
+		}
+		store.coverSimModeData.simulations.splice(index, 1);
 	}
 
 	try {
@@ -353,6 +368,34 @@ function updateOpacity() {
 	map.map.setPaintProperty(`coverage-${simulation.value.id}`, "raster-opacity", simulation.value.opacity);
 }
 
+onBeforeMount(() => {
+	store.coverSimModeData.simulations.forEach(async (sim) => {
+		if (!sim.wmsUrl) return;
+
+		const url = new URL(sim.wmsUrl);
+		url.searchParams.set("bbox", "1531186.5506086498,5762740.436476007,1536078.520418901,5767632.406286258");
+
+		const py = await (await fetch(url)).body?.getReader().read()
+
+		if (!py?.value?.byteLength || py?.value?.byteLength < 600) return;
+
+		map.map?.addSource(`coverage-${sim.id}`, {
+			type: "raster",
+			tiles: [sim.wmsUrl],
+			tileSize: 256,
+		});
+
+		map.map?.addLayer({
+			id: `coverage-${sim.id}`,
+			type: "raster",
+			source: `coverage-${sim.id}`,
+			paint: {
+				"raster-opacity": sim.opacity,
+			},
+		});
+	});
+})
+
 // remove all uneded stuff before umount
 onBeforeUnmount(() => {
 	markers.value.forEach((marker) => marker.remove());
@@ -367,7 +410,7 @@ onBeforeUnmount(() => {
 		console.error(`Error removing layer: ${simulation.value.id}`);
 	}
 
-	for (const simulation of simulations.value) {
+	for (const simulation of store.coverSimModeData.simulations) {
 		try {
 			map.map?.removeLayer(`coverage-${simulation.id}`);
 			map.map?.removeSource(`coverage-${simulation.id}`);

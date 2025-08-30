@@ -1,7 +1,8 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, watch } from "vue";
 import type {
 	CoverageSimulatorPayload,
+	CoverageSimulatorSite,
 	LosSimulatorPayload,
 	LosSimulatorResponse,
 	LosSimulatorResponseUpdated,
@@ -14,6 +15,9 @@ const useStore = defineStore("store", {
 		return {
 			mobileMenuOpen: ref(true),
 			mapStyle: ref("openstreetmap"),
+			coverSimModeData: ref({
+				simulations: [] as CoverageSimulatorSite[],
+			}),
 			chart: ref({
 				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
 				data: [] as { name: string; data: any[] }[],
@@ -89,6 +93,14 @@ const useStore = defineStore("store", {
 		getMapWmsUrl(taskId: string): string {
 			return `${import.meta.env.VITE_GEOSERVER_URL}/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:${taskId}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`;
 		},
+		deleteCoverageSimulation(taskId: string) {
+			return fetch(`${import.meta.env.VITE_API_URL}/delete/coverage/${taskId}`, {
+				method: "GET",
+				headers: {
+					"Content-Type": "application/json",
+				}
+			});
+		},
 		fetchOverpassArea(
 			polygon: [number, number][],
 		): Promise<OverpassResponse[] | null> {
@@ -130,6 +142,23 @@ const useStore = defineStore("store", {
 				return null;
 			});
 		},
+		updateLocalStorage() {
+			localStorage.setItem("store", JSON.stringify({
+				coverSimModeData: this.coverSimModeData
+			}));
+		},
+		loadFromLocalStorage() {
+			const storedData = localStorage.getItem("store");
+			if (storedData) {
+				const parsedData = JSON.parse(storedData);
+				this.coverSimModeData = parsedData.coverSimModeData;
+			}
+		},
+		watchForChangesAndCommit() {
+			watch(this.coverSimModeData, () => {
+				this.updateLocalStorage();
+			});
+		}
 	},
 });
 

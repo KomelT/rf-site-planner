@@ -7,7 +7,7 @@ from fastapi.responses import JSONResponse
 from models.CoveragePredictionRequest import CoveragePredictionRequest
 from models.LosPredictionRequest import LosPredictionRequest
 from redis import StrictRedis
-from services.geoserver import store_tiff_in_geoserver
+from services.geoserver import remove_tiff_from_geoserver, store_tiff_in_geoserver
 from services.splat import Splat
 
 logging.basicConfig(level=logging.INFO)
@@ -81,6 +81,10 @@ async def predict(
     background_tasks.add_task(run_coverage, task_id, payload)
     return JSONResponse({"task_id": task_id})
 
+@app.get("/delete/coverage/{task_id}")
+async def delete_coverage(task_id: str) -> JSONResponse:
+    remove_tiff_from_geoserver(task_id)
+    return JSONResponse({"status": "deleted"})
 
 @app.get("/task/status/{task_id}")
 async def get_status(task_id: str):

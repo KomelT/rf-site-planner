@@ -29,12 +29,9 @@
 </template>
 
 <script setup>
-import { Dialog, DialogPanel } from "@headlessui/vue";
-import { Bars3Icon, XMarkIcon } from "@heroicons/vue/24/outline";
-import { ref } from "vue";
+import { Bars3Icon } from "@heroicons/vue/24/outline";
 import GitHubIcon from "../assets/GitHubIcon.vue";
 import { useStore } from "../stores/store";
-import ModeSelector from "./ModeSelector/ModeSelector.vue";
 
 const store = useStore();
 
@@ -43,8 +40,8 @@ const navigation = [];
 
 // set default value as false if screen size is less than 1024px
 if (window.innerWidth < 1024) {
-	store.mobileMenuOpen = false;
+  store.mobileMenuOpen = false;
 } else {
-	store.mobileMenuOpen = true;
+  store.mobileMenuOpen = true;
 }
 </script>

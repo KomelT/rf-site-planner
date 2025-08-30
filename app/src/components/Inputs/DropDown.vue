@@ -40,7 +40,7 @@ import {
   ListboxOptions,
 } from "@headlessui/vue";
 import { ChevronUpDownIcon, MinusIcon } from "@heroicons/vue/16/solid";
-import { type Ref, computed, ref } from "vue";
+import { type Ref, computed, ref, watch } from "vue";
 
 export type DropDownProps = {
   title: string;
@@ -65,4 +65,11 @@ const selected = computed({
     select.value = value;
   },
 });
+
+watch(
+  () => props.options,
+  (options) => {
+    if (options.find((opt) => opt.id === selected.value.id)) selected.value = options[0];
+  },
+);
 </script>

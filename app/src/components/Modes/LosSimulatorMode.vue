@@ -123,12 +123,10 @@ const showSections = ref({
 	simulationsOptions: false,
 });
 
-const simulations: Ref<LosSimulatorSite[]> = ref([]);
-
 const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 	return {
-		id: simulations.value.length.toString(),
-		title: `Simulation ${simulations.value.length}`,
+		id: store.losSimModeData.simulations.length.toString(),
+		title: `Simulation ${store.losSimModeData.simulations.length}`,
 		tx_lat: 45.85473269336,
 		tx_lon: 13.72616645611,
 		tx_height: 4,
@@ -153,18 +151,18 @@ const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 	};
 });
 
-if (simulations.value.length === 0) {
-	simulations.value.push(defautltSimulationValues.value);
+if (store.losSimModeData.simulations.length === 0) {
+	store.losSimModeData.simulations.push(defautltSimulationValues.value);
 }
 
 const simulationsOptions = computed(() => {
-	return simulations.value.map((simulation) => ({
+	return store.losSimModeData.simulations.map((simulation) => ({
 		id: simulation.id,
 		title: simulation.title,
 	}));
 });
 
-const simulation: Ref<LosSimulatorSite> = ref(simulations.value[0]);
+const simulation: Ref<LosSimulatorSite> = ref(store.losSimModeData.simulations[0]);
 
 // watch for current simulation changes
 watch(
@@ -232,16 +230,14 @@ async function runSimulation() {
 		const data = await store.fetchSimulationStatus(taskId, 500);
 		const lossData = JSON.parse(data.data) as unknown as LosSimulatorResponse;
 
-		store.chart.rx_signal_power = lossData.rx_signal_power;
-		store.chart.path.obstructed = lossData.path.obstructed;
-		store.chart.path.message = lossData.path.message;
-		store.chart.path.obstructions = lossData.path.obstructions;
-
-		console.log("Obstructions:", store.chart.path.obstructions);
+		store.losSimModeData.chart.rx_signal_power = lossData.rx_signal_power;
+		store.losSimModeData.chart.path.obstructed = lossData.path.obstructed;
+		store.losSimModeData.chart.path.message = lossData.path.message;
+		store.losSimModeData.chart.path.obstructions = lossData.path.obstructions;
 
 		const lossProcessedData = processLosData(lossData);
 
-		store.chart.data = [
+		store.losSimModeData.chart.data = [
 			{
 				name: "Elevation (m)",
 				data: lossProcessedData.profile,
@@ -260,7 +256,7 @@ async function runSimulation() {
 			},
 		];
 
-		store.chart.options = {
+		store.losSimModeData.chart.options = {
 			chart: {
 				type: "line",
 			},
@@ -306,7 +302,7 @@ async function runSimulation() {
 							betwMarker.value = new Marker({ color: "blue" })
 								.setLngLat(coordBetw)
 								.addTo(map.map);
-						} else if(betwMarker.value) {
+						} else if (betwMarker.value) {
 							betwMarker.value.setLngLat(coordBetw);
 						}
 
@@ -314,20 +310,9 @@ async function runSimulation() {
 					},
 				}
 			}
-			/*annotations: {
-				xaxis: (store.chart.path.obstructions || []).map((obs) => {
-					const xValue = obs[2].toString();
-					return {
-						x: xValue,
-						borderColor: '#FF0000',
-						strokeDashArray: 6,
-					};
-					
-				}),
-			},*/
 		};
 
-		store.chart.show = true;
+		store.losSimModeData.chart.show = true;
 
 		notificationStore.addNotification({
 			type: "success",
@@ -380,6 +365,8 @@ function addLocationListener(type: "tx" | "rx") {
 	locationPickerSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
 
+		betwMarker.value?.remove();
+
 		simulation.value[`${type}_lat`] = Number(lat.toFixed(10));
 		simulation.value[`${type}_lon`] = Number(lng.toFixed(10));
 
@@ -415,16 +402,16 @@ function flyToMarker(lon: number, lat: number) {
 }
 
 function addSimulation() {
-	simulations.value.push(defautltSimulationValues.value);
-	simulation.value = simulations.value[simulations.value.length - 1];
+	store.losSimModeData.simulations.push(defautltSimulationValues.value);
+	simulation.value = store.losSimModeData.simulations[store.losSimModeData.simulations.length - 1];
 }
 
 function changeCurrentSimulation(sim: { id: string; title: string }) {
-	const index = simulations.value.findIndex(
+	const index = store.losSimModeData.simulations.findIndex(
 		(simulation) => simulation.id === sim.id,
 	);
 	if (index !== -1) {
-		simulation.value = simulations.value[index];
+		simulation.value = store.losSimModeData.simulations[index];
 	}
 
 	txMarker.value?.setLngLat([simulation.value.tx_lon, simulation.value.tx_lat]);
@@ -434,7 +421,7 @@ function changeCurrentSimulation(sim: { id: string; title: string }) {
 function removeSimulation(id: string) {
 	if (!map.isLoaded || !map.map) return;
 
-	if (simulations.value.length === 1) {
+	if (store.losSimModeData.simulations.length === 1) {
 		notificationStore.addNotification({
 			type: "error",
 			message: "You need at least one simulation.",
@@ -444,9 +431,9 @@ function removeSimulation(id: string) {
 		return;
 	}
 
-	const index = simulations.value.findIndex((sim) => sim.id === id);
+	const index = store.losSimModeData.simulations.findIndex((sim) => sim.id === id);
 	if (index !== -1) {
-		simulations.value.splice(index, 1);
+		store.losSimModeData.simulations.splice(index, 1);
 	}
 
 	try {
@@ -459,7 +446,7 @@ function removeSimulation(id: string) {
 
 // remove all markers on umount
 onBeforeUnmount(() => {
-	store.chart.show = false;
+	store.losSimModeData.chart.show = false;
 
 	if (txMarker.value) {
 		txMarker.value.remove();

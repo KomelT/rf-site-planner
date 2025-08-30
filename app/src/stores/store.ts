@@ -6,6 +6,7 @@ import type {
 	LosSimulatorPayload,
 	LosSimulatorResponse,
 	LosSimulatorResponseUpdated,
+	LosSimulatorSite,
 	OverpassResponse,
 } from "./types.ts";
 import { ApexOptions } from "apexcharts";
@@ -18,17 +19,20 @@ const useStore = defineStore("store", {
 			coverSimModeData: ref({
 				simulations: [] as CoverageSimulatorSite[],
 			}),
-			chart: ref({
-				// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-				data: [] as { name: string; data: any[] }[],
-				options: {} as ApexOptions,
-				show: false,
-				rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
-				path: {
-					obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
-					message: ref<LosSimulatorResponse["path"]["message"]>(""),
-					obstructions: ref<LosSimulatorResponse["path"]["obstructions"]>([]),
-				},
+			losSimModeData: ref({
+				simulations: [] as LosSimulatorSite[],
+				chart: ref({
+					// biome-ignore lint/suspicious/noExplicitAny: <explanation>
+					data: [] as { name: string; data: any[] }[],
+					options: {} as ApexOptions,
+					show: false,
+					rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
+					path: {
+						obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
+						message: ref<LosSimulatorResponse["path"]["message"]>(""),
+						obstructions: ref<LosSimulatorResponse["path"]["obstructions"]>([]),
+					},
+				}),
 			}),
 			centralNodeTable: ref({
 				data: [] as LosSimulatorResponseUpdated[],

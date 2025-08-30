@@ -1,9 +1,10 @@
 <template>
-  <MglCustomControl v-if="store.chart.show" :position="props.position">
-    <VueApexCharts width="400" height="250" type="line" :series="store.chart.data" :options="store.chart.options" />
+  <MglCustomControl v-if="store.losSimModeData.chart.show" :position="props.position">
+    <VueApexCharts width="400" height="250" type="line" :series="store.losSimModeData.chart.data"
+      :options="store.losSimModeData.chart.options" />
     <div class="text-black ml-5">
-      <p><b>RX signal power: </b>{{ store.chart.rx_signal_power }} dBm</p>
-      <b>{{ store.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
+      <p><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power }} dBm</p>
+      <b>{{ store.losSimModeData.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
     </div>
   </MglCustomControl>
 </template>
@@ -14,7 +15,7 @@ import VueApexCharts from "vue3-apexcharts";
 import { useStore } from "../../stores/store";
 
 export type LayerSelectorProps = {
-	position: ControlPosition | undefined;
+  position: ControlPosition | undefined;
 };
 
 const props = defineProps<LayerSelectorProps>();

@@ -1,10 +1,18 @@
 <template>
   <MglCustomControl v-if="store.losSimModeData.chart.show" :position="props.position">
-    <VueApexCharts width="400" height="250" type="line" :series="store.losSimModeData.chart.data"
-      :options="store.losSimModeData.chart.options" />
-    <div class="text-black ml-5">
-      <p><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power }} dBm</p>
-      <b>{{ store.losSimModeData.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
+    <div :class="['bg-white border rounded shadow-lg', hide ? 'border-gray-100' : 'border-gray-300']">
+      <Button v-if="hide" text="Show" @click="hide = false" class="px-2! m-2 w-auto! bg-orange-400!" />
+      <div v-if="!hide">
+        <VueApexCharts :width="isMobileDevice() ? '100%' : 400" height="250" type="line"
+          :series="store.losSimModeData.chart.data" :options="store.losSimModeData.chart.options" />
+        <div class="flex items-center justify-between bg-white p-2 border-t border-gray-300">
+          <div class="text-black ml-1">
+            <p><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power }} dBm</p>
+            <b>{{ store.losSimModeData.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
+          </div>
+          <Button text="Hide" @click="hide = true" class="px-2! py-3 w-auto! bg-orange-400!" />
+        </div>
+      </div>
     </div>
   </MglCustomControl>
 </template>
@@ -13,10 +21,15 @@ import { MglCustomControl } from "@indoorequal/vue-maplibre-gl";
 import type { ControlPosition } from "maplibre-gl";
 import VueApexCharts from "vue3-apexcharts";
 import { useStore } from "../../stores/store";
+import { isMobileDevice } from "../../utils";
+import Button from "../Inputs/Button.vue";
+import { ref } from "vue";
 
 export type LayerSelectorProps = {
   position: ControlPosition | undefined;
 };
+
+const hide = ref(false);
 
 const props = defineProps<LayerSelectorProps>();
 

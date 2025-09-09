@@ -214,7 +214,7 @@ async function runSimulation() {
 		type: "info",
 		message: "Starting simulation...",
 		title: "LOS Simulation",
-		hideAfter: 5000,
+		hideAfter: 2000,
 	});
 
 	try {
@@ -320,14 +320,14 @@ async function runSimulation() {
 			type: "success",
 			message: "Simulation finished",
 			title: "LOS Simulation",
-			hideAfter: 5000,
+			hideAfter: 2000,
 		});
 	} catch (e) {
 		notificationStore.addNotification({
 			type: "error",
 			message: "Simulation failed",
 			title: "LOS Simulation",
-			hideAfter: 5000,
+			hideAfter: 2000,
 		});
 	} finally {
 		isSimulationRunning.value = false;
@@ -432,7 +432,7 @@ function removeSimulation(id: string) {
 			type: "error",
 			message: "You need at least one simulation.",
 			title: "Coverage Simulation",
-			hideAfter: 5000,
+			hideAfter: 2000,
 		});
 		return;
 	}

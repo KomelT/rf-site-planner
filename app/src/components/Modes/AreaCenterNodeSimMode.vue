@@ -92,7 +92,7 @@ import {
 	climateOptions,
 	polarizationOptions,
 } from "../../stores/types";
-import { randomHexColor } from "../../utils";
+import { isMobileDevice, randomHexColor } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
@@ -264,6 +264,8 @@ watch(
 function drawPolygonArea() {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	if (pickingPolygonArea.value) {
 		pickingPolygonArea.value = false;
 		if (areaPolygonSubscription.value) {
@@ -310,6 +312,8 @@ function finishPolygonArea() {
 function addReceiverLocationListener() {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	if (pickingReceiverLocation.value) {
 		pickingReceiverLocation.value = false;
 		if (locationPickerSubscription.value) {
@@ -339,6 +343,9 @@ function addReceiverLocationListener() {
 
 function flyToNode(lat: number, lon: number) {
 	if (lat === 0 || lon === 0) return;
+
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	map.map?.flyTo({
 		center: [lon, lat],
 		zoom: 18,
@@ -377,6 +384,8 @@ function addReceiver() {
 }
 
 async function runSimulation() {
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	notificationStore.addNotification({
 		type: "info",
 		message: "Starting simulation...",
@@ -404,7 +413,7 @@ async function runSimulation() {
 	}).filter((el): el is OverpassResponse => el !== undefined)
 
 	const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
-	store.centralNodeTable.data = [];
+	store.centerNodeSimModeData.table.data = [];
 
 	for (const transmitter of trans) {
 		for (const receiver of simulation.value.recivers) {
@@ -481,11 +490,11 @@ async function runSimulation() {
 		});
 	});
 
-	store.centralNodeTable.show = true;
+	store.centerNodeSimModeData.table.show = true;
 
 	Promise.all(taskPromises).then((results) => {
 		isSimulationRunning.value = false;
-		store.centralNodeTable.data.push(
+		store.centerNodeSimModeData.table.data.push(
 			...results.filter(
 				(
 					result,
@@ -514,7 +523,7 @@ onBeforeUnmount(() => {
 
 	locationPickerSubscription.value?.unsubscribe();
 
-	store.centralNodeTable.data.splice(0, store.centralNodeTable.data.length);
-	store.centralNodeTable.show = false;
+	store.centerNodeSimModeData.table.data.splice(0, store.centerNodeSimModeData.table.data.length);
+	store.centerNodeSimModeData.table.show = false;
 });
 </script>

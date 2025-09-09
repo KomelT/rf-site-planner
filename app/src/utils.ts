@@ -84,3 +84,7 @@ export function randomHexColor(): string {
 		.toString(16)
 		.padStart(6, "0")}`;
 }
+
+export function isMobileDevice(): boolean {
+	return /Mobi|Android/i.test(navigator.userAgent);
+}

@@ -113,7 +113,7 @@ import {
 	climateOptions,
 	polarizationOptions,
 } from "../../stores/types";
-import { randomHexColor } from "../../utils";
+import { isMobileDevice, randomHexColor } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
@@ -283,11 +283,11 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-function changeCurrentSimulation() {}
+function changeCurrentSimulation() { }
 
-function removeSimulation() {}
+function removeSimulation() { }
 
-function addSimulation() {}
+function addSimulation() { }
 
 function addTransmitterLocationListener() {
 	if (!map.isLoaded || !map.map) return;
@@ -322,6 +322,8 @@ function addTransmitterLocationListener() {
 function addReceiverLocationListener() {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	if (pickingReceiverLocation.value) {
 		pickingReceiverLocation.value = false;
 		if (locationPickerSubscription.value) {
@@ -351,6 +353,9 @@ function addReceiverLocationListener() {
 
 function flyToNode(lat: number, lon: number) {
 	if (lat === 0 || lon === 0) return;
+
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	map.map?.flyTo({
 		center: [lon, lat],
 		zoom: 18,
@@ -423,7 +428,10 @@ function addReceiver() {
 
 async function runSimulation() {
 	try {
+		if (isMobileDevice()) store.toggleMobileMenu();
+
 		isSimulationRunning.value = true;
+
 		notificationStore.addNotification({
 			type: "info",
 			message: "Starting simulation...",
@@ -433,7 +441,7 @@ async function runSimulation() {
 
 		const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
 
-		store.centralNodeTable.data = [];
+		store.centerNodeSimModeData.table.data = [];
 
 		for (const transmitter of simulation.value.transmitter) {
 			for (const receiver of simulation.value.recivers) {
@@ -500,7 +508,7 @@ async function runSimulation() {
 				const tx_id = tasks.value.find((val) => val.id === task.id)?.tx;
 				const rx_id = tasks.value.find((val) => val.id === task.id)?.rx;
 
-				store.centralNodeTable.data.push({
+				store.centerNodeSimModeData.table.data.push({
 					...(JSON.parse(data.data) as unknown as LosSimulatorResponse),
 					tx_id: tx_id ?? "",
 					tx_title:
@@ -512,8 +520,8 @@ async function runSimulation() {
 						"",
 				});
 
-				store.centralNodeTable.show = false;
-				store.centralNodeTable.show = true;
+				store.centerNodeSimModeData.table.show = false;
+				store.centerNodeSimModeData.table.show = true;
 			} catch (error) {
 				notificationStore.addNotification({
 					type: "error",
@@ -542,7 +550,7 @@ onBeforeUnmount(() => {
 
 	locationPickerSubscription.value?.unsubscribe();
 
-	store.centralNodeTable.data.splice(0, store.centralNodeTable.data.length);
-	store.centralNodeTable.show = false;
+	store.centerNodeSimModeData.table.data.splice(0, store.centerNodeSimModeData.table.data.length);
+	store.centerNodeSimModeData.table.show = false;
 });
 </script>

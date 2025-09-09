@@ -1,20 +1,55 @@
 <template>
-  <MglCustomControl v-if="store.centralNodeTable.show" :position="props.position">
-    <table class="table table-striped table-bordered text-black m-1 bg-white">
-      <thead>
-        <tr>
-          <th class="px-1">Transmitter</th>
-          <th v-for="(col, index) in colsNames" class="px-1" :key="index">{{ col }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(row, rowIndex) in rows" :key="rowIndex">
-          <td v-for="(cell, cellIndex) in row" class="px-1" :key="cellIndex">{{ cell }}</td>
-        </tr>
-      </tbody>
-    </table>
-		<DropDown title="Sort methods" :options="sortMethods" v-model="selectedSortMethod" />
-  </MglCustomControl>
+	<MglCustomControl v-if="store.centerNodeSimModeData.table.show" :position="props.position"
+		class="bg-white max-h-96 w-96 maplibregl-ctrl">
+		<div class="grid grid-cols-7 gap-2 m-3 items-end">
+			<div class="col-span-4">
+				<h2 class="text-lg font-medium text-gray-900">Central Node Table</h2>
+				<p class="mt-1 text-sm text-gray-600">Signal power between central node and other nodes</p>
+			</div>
+			<div class="col-span-3">
+				<DropDown title="Sort methods" :options="sortMethods" v-model="selectedSortMethod"
+					:btnOptions="{ labelColor: 'text-gray-900' }" />
+			</div>
+		</div>
+		<div class="mt-8 px-1 flow-root">
+			<div class="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
+				<div class="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
+					<table class="relative min-w-full divide-y divide-gray-300">
+						<thead>
+							<tr>
+								<th scope="col" class="py-3.5 px-1 text-center text-sm font-semibold text-gray-800">
+									<a href="#" class="group inline-flex" @click="sortByColumn(0)">
+										TX / RX
+										<span class="ml-2 flex-none rounded text-gray-400">
+											<ChevronUpIcon v-if="colsSortWays.get(0) === 'desc'" class="size-5" aria-hidden="true" />
+											<ChevronDownIcon v-else class="size-5" aria-hidden="true" />
+										</span>
+									</a>
+								</th>
+								<th v-for="(col, index) in colsNames" :key="index" scope="col"
+									class="py-3.5 px-1 text-center text-sm font-semibold text-gray-900 sm:pl-0">
+									<a href="#" class="group inline-flex" @click="sortByColumn(index + 1)">
+										{{ col }}
+										<span class="ml-2 flex-none rounded text-gray-400">
+											<ChevronUpIcon v-if="colsSortWays.get(index + 1) === 'desc'" class="size-5" aria-hidden="true" />
+											<ChevronDownIcon v-else class="size-5" aria-hidden="true" />
+										</span>
+									</a>
+								</th>
+							</tr>
+						</thead>
+						<tbody class="divide-y divide-gray-200 bg-white">
+							<tr v-for="(row, rowIndex) in rows" :key="rowIndex">
+								<td v-for="(cell, cellIndex) in row" :key="cellIndex"
+									class="whitespace-nowrap text-center py-4 px-1 text-sm font-medium text-gray-900">
+									{{ cell }}</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+	</MglCustomControl>
 </template>
 <script setup lang="ts">
 import { MglCustomControl } from "@indoorequal/vue-maplibre-gl";
@@ -22,13 +57,14 @@ import type { ControlPosition } from "maplibre-gl";
 import { ref, watch } from "vue";
 import { useStore } from "../../stores/store";
 import DropDown from "../Inputs/DropDown.vue";
+import { ChevronDownIcon, ChevronUpIcon } from '@heroicons/vue/20/solid'
 
 export type CentralNodetableProps = {
 	position: ControlPosition | undefined;
 };
 
 const sortMethods = [
-	{ id: "average", title: "Average"}
+	{ id: "average", title: "Average" }
 ]
 const selectedSortMethod = ref(sortMethods[0].id);
 
@@ -39,9 +75,10 @@ const store = useStore();
 const cols = ref<string[]>([]);
 const colsNames = ref<string[]>([]);
 const rows = ref<string[][]>([]);
+const colsSortWays = ref<Map<number, 'asc' | 'desc'>>(new Map());
 
 watch(
-	() => store.centralNodeTable.data,
+	() => store.centerNodeSimModeData.table.data,
 	(newData) => {
 		if (newData.length > 0) {
 			// Extract unique rx_ids once
@@ -77,4 +114,37 @@ watch(
 	},
 	{ immediate: true, deep: true },
 );
+
+function sortByColumn(columnIndex: number) {
+	const isRSSI = columnIndex > 0;
+
+	// 1) decide next direction first (outside comparator)
+	const current = colsSortWays.value.get(columnIndex) ?? 'desc';
+	const next = current === 'asc' ? 'desc' : 'asc';
+	colsSortWays.value.set(columnIndex, next);
+	const dir = next === 'asc' ? 1 : -1;
+
+	const compare = (a: string, b: string): number => {
+		let an = 0;
+		let bn = 0;
+
+		if (isRSSI) {
+			an = parseFloat(a.split(" ")[0]);
+			bn = parseFloat(b.split(" ")[0]);
+		} else {
+			an = parseFloat(a.split(" ")[1]);
+			bn = parseFloat(b.split(" ")[1]);
+		}
+
+		if (!isNaN(an) && !isNaN(bn)) {
+			return an - bn;
+		}
+		// fallback: natural string compare
+		return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+	};
+
+	// 3) sort (clone to ensure Vue reactivity if needed)
+	rows.value = [...rows.value].sort((r1, r2) => compare(r1[columnIndex], r2[columnIndex]) * dir);
+}
+
 </script>

@@ -97,7 +97,7 @@ import {
 	climateOptions,
 	polarizationOptions,
 } from "../../stores/types";
-import { processLosData } from "../../utils";
+import { isMobileDevice, processLosData } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
@@ -206,6 +206,8 @@ watch(
 
 async function runSimulation() {
 	if (!map.isLoaded || !map.map) return;
+
+	if (isMobileDevice()) store.toggleMobileMenu();
 
 	isSimulationRunning.value = true;
 	notificationStore.addNotification({
@@ -336,6 +338,8 @@ async function runSimulation() {
 function addLocationListener(type: "tx" | "rx") {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	if (type === "tx" && txPickingLocation.value) {
 		txPickingLocation.value = false;
 		if (locationPickerSubscription.value) {
@@ -394,6 +398,8 @@ function addLocationListener(type: "tx" | "rx") {
 
 function flyToMarker(lon: number, lat: number) {
 	if (!map.isLoaded || !map.map) return;
+
+	if (isMobileDevice()) store.toggleMobileMenu();
 
 	map.map.flyTo({
 		center: [lon, lat],

@@ -1,6 +1,6 @@
 <template>
   <Listbox as="div" v-model="selected">
-    <ListboxLabel class="block text-sm/6 font-medium text-gray-200">{{ props.title }}</ListboxLabel>
+    <ListboxLabel v-if="props.title" :class="['block text-sm/6 font-medium', props.btnOptions?.labelColor ?? 'text-gray-200']">{{ props.title }}</ListboxLabel>
     <div class="relative mt-0.5">
       <ListboxButton
         class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 outline -outline-offset-1 outline-gray-300 focus:outline focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
@@ -43,10 +43,13 @@ import { ChevronUpDownIcon, MinusIcon } from "@heroicons/vue/16/solid";
 import { type Ref, computed, ref, watch } from "vue";
 
 export type DropDownProps = {
-  title: string;
+  title?: string;
   options: Array<{ id?: number | string; title: string }>;
   selected?: { id: number; title: string };
   deleteBtn?: boolean;
+  btnOptions?: {
+    labelColor?: string;
+  }
 };
 
 const props = defineProps<DropDownProps>();

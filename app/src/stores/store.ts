@@ -34,10 +34,12 @@ const useStore = defineStore("store", {
 					},
 				}),
 			}),
-			centralNodeTable: ref({
-				data: [] as LosSimulatorResponseUpdated[],
-				options: {},
-				show: false,
+			centerNodeSimModeData: ref({
+				table: ref({
+					data: [] as LosSimulatorResponseUpdated[],
+					options: {},
+					show: false,
+				}),
 			}),
 			geoJsonLine: ref({
 				coordinates: [] as [number, number][],
@@ -162,7 +164,10 @@ const useStore = defineStore("store", {
 			watch(this.coverSimModeData, () => {
 				this.updateLocalStorage();
 			});
-		}
+		},
+		toggleMobileMenu(open: boolean | null = null) {
+			this.mobileMenuOpen = open !== null ? open : !this.mobileMenuOpen;
+		},
 	},
 });
 

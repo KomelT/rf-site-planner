@@ -98,7 +98,7 @@ import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
-import { randomHexColor } from "../../utils";
+import { isMobileDevice, randomHexColor } from "../../utils";
 import { onBeforeMount } from "vue";
 
 const map = useMap();
@@ -191,6 +191,8 @@ watch(
 async function runSimulation() {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	isSimulationRunning.value = true;
 	notificationStore.addNotification({
 		type: "info",
@@ -226,10 +228,8 @@ async function runSimulation() {
 
 		if (!map.isLoaded || !map.map) return;
 
-		console.log(simulation.value.wmsUrl);
 		if (simulation.value.wmsUrl) {
 			const url = new URL(simulation.value.wmsUrl);
-			console.log(url);
 			const res = await store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
 			res.ok
 				? console.log("Previous simulation deleted successfully.")
@@ -274,6 +274,8 @@ async function runSimulation() {
 function addLocationListener() {
 	if (!map.isLoaded || !map.map) return;
 
+	if (isMobileDevice()) store.toggleMobileMenu();
+
 	if (pickingLocation.value) {
 		pickingLocation.value = false;
 		if (locationPickerSubscription.value) {
@@ -305,6 +307,8 @@ function addLocationListener() {
 
 function flyToCurrentMarker() {
 	if (!map.isLoaded || !map.map) return;
+
+	if (isMobileDevice()) store.toggleMobileMenu();
 
 	map.map.flyTo({
 		center: [simulation.value.lon, simulation.value.lat],

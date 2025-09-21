@@ -48,7 +48,7 @@ const useStore = defineStore("store", {
 	},
 	actions: {
 		fetchLosSimulation(payload: LosSimulatorPayload) {
-			return fetch(`${import.meta.env.VITE_API_URL}/predict/los`, {
+			return fetch(`${import.meta.env.VITE_API_URL}/los`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -57,7 +57,7 @@ const useStore = defineStore("store", {
 			});
 		},
 		fetchCoverageSimulation(payload: CoverageSimulatorPayload) {
-			return fetch(`${import.meta.env.VITE_API_URL}/predict/coverage`, {
+			return fetch(`${import.meta.env.VITE_API_URL}/coverage`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -73,7 +73,7 @@ const useStore = defineStore("store", {
 				try {
 					const interval = setInterval(async () => {
 						const res = await fetch(
-							`${import.meta.env.VITE_API_URL}/task/status/${taskId}`,
+							`${import.meta.env.VITE_API_URL}/task/${taskId}`,
 						);
 
 						if (!res.ok) throw new Error("Error fetching task status");
@@ -100,8 +100,8 @@ const useStore = defineStore("store", {
 			return `${import.meta.env.VITE_GEOSERVER_URL}/RF-SITE-PLANNER/wms?service=WMS&version=1.1.0&transparent=true&request=GetMap&layers=RF-SITE-PLANNER:${taskId}&bbox={bbox-epsg-3857}&width=256&height=256&srs=EPSG:3857&format=image/png`;
 		},
 		deleteCoverageSimulation(taskId: string) {
-			return fetch(`${import.meta.env.VITE_API_URL}/delete/coverage/${taskId}`, {
-				method: "GET",
+			return fetch(`${import.meta.env.VITE_API_URL}/coverage/${taskId}`, {
+				method: "DELETE",
 				headers: {
 					"Content-Type": "application/json",
 				}

@@ -46,7 +46,7 @@ def run_los(task_id: str, request: CoveragePredictionRequest):
         raise
 
 
-@app.post("/predict/los")
+@app.post("/los")
 async def predict_los(
     payload: LosPredictionRequest, background_tasks: BackgroundTasks
 ) -> JSONResponse:
@@ -72,7 +72,7 @@ def run_coverage(task_id: str, request: CoveragePredictionRequest):
         raise
 
 
-@app.post("/predict/coverage")
+@app.post("/coverage")
 async def predict(
     payload: CoveragePredictionRequest, background_tasks: BackgroundTasks
 ) -> JSONResponse:
@@ -81,12 +81,14 @@ async def predict(
     background_tasks.add_task(run_coverage, task_id, payload)
     return JSONResponse({"task_id": task_id})
 
-@app.get("/delete/coverage/{task_id}")
+
+@app.delete("/coverage/{task_id}")
 async def delete_coverage(task_id: str) -> JSONResponse:
     remove_tiff_from_geoserver(task_id)
     return JSONResponse({"status": "deleted"})
 
-@app.get("/task/status/{task_id}")
+
+@app.get("/task/{task_id}")
 async def get_status(task_id: str):
     status = redis_client.get(f"{task_id}:status")
     if not status:
@@ -99,7 +101,11 @@ async def get_status(task_id: str):
         if data:
             return JSONResponse({"status": "completed", "data": data.decode("utf-8")})
         else:
-            return JSONResponse({"status": "completed",})
+            return JSONResponse(
+                {
+                    "status": "completed",
+                }
+            )
     elif status == "failed":
         error = redis_client.get(f"{task_id}:error")
         return JSONResponse({"status": "failed", "error": error.decode("utf-8")})

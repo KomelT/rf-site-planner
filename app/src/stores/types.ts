@@ -122,7 +122,7 @@ export type CenterNodeSimulatorPayload = {
 	ground_dielectric: number;
 	ground_conductivity: number;
 	atmosphere_bending: number;
-	system_loss: number;
+	tx_loss: number;
 	radio_climate: RadioClimate;
 	polarization: Polarization;
 	situation_fraction: number;
@@ -159,7 +159,7 @@ export type AreaCenterNodeSimulatorPayload = {
 	ground_dielectric: number;
 	ground_conductivity: number;
 	atmosphere_bending: number;
-	system_loss: number;
+	tx_loss: number;
 	radio_climate: RadioClimate;
 	polarization: Polarization;
 	situation_fraction: number;

@@ -175,7 +175,7 @@ const defautltSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 					gain: 2,
 				},
 			],
-			system_loss: 2,
+			tx_loss: 2,
 			signal_threshold: -130,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
@@ -456,6 +456,7 @@ async function runSimulation() {
 						rx_lon: receiver.lon,
 						rx_height: receiver.height,
 						rx_gain: receiver.gain,
+						rx_loss: 0,
 						frequency_mhz: simulation.value.frequency_mhz,
 						atmosphere_bending: simulation.value.atmosphere_bending,
 						ground_conductivity: simulation.value.ground_conductivity,
@@ -466,7 +467,7 @@ async function runSimulation() {
 						situation_fraction: simulation.value.situation_fraction,
 						time_fraction: simulation.value.time_fraction,
 						signal_threshold: simulation.value.signal_threshold,
-						system_loss: simulation.value.system_loss,
+						tx_loss: simulation.value.tx_loss,
 						high_resolution: simulation.value.high_resolution,
 					});
 

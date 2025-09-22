@@ -10,8 +10,8 @@ This tool uses the SPLAT! implementation of the ITM / Longley-Rice model to calc
 | **Latitude**      | Latitude of the transmitter               | Decimal Degrees   | None          | Transmitter location.          |
 | **Longitude**     | Longitude of the transmitter              | Decimal Degrees   | None          | Transmitter location.         |
 | **Antenna Height**| Height of the transmitter above ground    | Meters            | 2 m           | Should include mast or tower height.      |
-| **Transmit Power**| Power output of the transmitter           | Watts             | 0.1 W         | Set based on your Meshtastic device and region, defaults to 0.1W / 30 dBm. |
-| **Frequency**     | Signal frequency                          | MHz               | 907 MHz       | Set based on your region.                 |
+| **Transmit Power**| Power output of the transmitter           | dBm               | 27 dBm        | Set based on your Meshtastic device and region, defaults to 0.501W / 30 dBm. |
+| **Frequency**     | Signal frequency                          | MHz               | 868.5 MHz     | Set based on your region.                 |
 | **Antenna Gain**  | Vertical gain of the antenna                       | dBi               | 2.15 dBi      | Isotropic antenna assumed by default, applies to most meshtastic devices.    |
 
 Refer to the Meshtastic region settings (https://meshtastic.org/docs/getting-started/initial-config/) and use the correct transmit power and frequency for your location. 

@@ -27,22 +27,23 @@
 					<Button text="Fly to coordinates" @click="flyToCurrentMarker" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Power (W)" v-model:value="simulation.tx_power" />
+					<InputNumber title="Power (dBm)" v-model:value="simulation.tx_power" />
 					<InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency_mhz" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="simulation.tx_height" />
-					<InputNumber title="Gain (dB)" v-model:value="simulation.tx_gain" />
+					<InputNumber title="Gain (dBi)" v-model:value="simulation.tx_gain" />
+					<InputNumber title="Loss (dB)" v-model:value="simulation.tx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
 				<div class="flex flex-row gap-2">
 					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.signal_threshold" />
-					<InputNumber title="Gain (dB)" v-model:value="simulation.rx_gain" />
+					<InputNumber title="Gain (dBi)" v-model:value="simulation.rx_gain" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="simulation.rx_height" />
-					<InputNumber title="Cable loss (dB)" v-model:value="simulation.system_loss" />
+					<InputNumber title="Loss (dB)" v-model:value="simulation.rx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
@@ -125,13 +126,14 @@ const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			opacity: 0.7,
 			lat: 45.85473269336,
 			lon: 13.72616645611,
-			tx_power: 0.1,
+			tx_power: 27,
 			frequency_mhz: 868.5,
 			tx_height: 2,
 			tx_gain: 5,
+			tx_loss: 2,
 			rx_gain: 5,
 			rx_height: 2,
-			system_loss: 1,
+			rx_loss: 2,
 			signal_threshold: -153,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
@@ -204,7 +206,7 @@ async function runSimulation() {
 	try {
 		const predictRes = await store.fetchCoverageSimulation({
 			...simulation.value,
-			tx_power: 10 * Math.log10(simulation.value.tx_power) + 30,
+			tx_power: simulation.value.tx_power,
 			radius: simulation.value.radius * 1000,
 			colormap: "plasma",
 			min_dbm: simulation.value.signal_threshold,

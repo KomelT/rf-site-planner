@@ -125,7 +125,7 @@ class Splat:
                             "tx",
                             request.tx_lat,
                             request.tx_lon,
-                            request.tx_height * (100 / 30.48),
+                            request.tx_height,
                         )
                     )
 
@@ -136,7 +136,7 @@ class Splat:
                             "rx",
                             request.rx_lat,
                             request.rx_lon,
-                            request.rx_height * (100 / 30.48),
+                            request.rx_height,
                         )
                     )
 
@@ -154,8 +154,8 @@ class Splat:
                             situation_fraction=request.situation_fraction,
                             time_fraction=request.time_fraction,
                             tx_power=request.tx_power,
-                            tx_gain=request.tx_gain + request.rx_gain,
-                            system_loss=request.system_loss,
+                            tx_gain=request.tx_gain,
+                            tx_loss=request.tx_loss,
                         )
                     )
 
@@ -179,13 +179,15 @@ class Splat:
                     str(request.signal_threshold),
                     "-gpsav",
                     "-f",
-                    "868.5M",
+                    f"{request.frequency_mhz}M",
                     "-H",
                     "normalized_terrain_height_graph.png",
                     "-l",
                     "path_loss_graph.png",
                     "-olditm",
                     "-metric",
+                    "-o",
+                    "topo_map.ppm",
                 ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 
@@ -214,16 +216,12 @@ class Splat:
                 logger.info("SPLAT! coverage prediction completed successfully.")
 
                 # save all files from tmpdir to /var/app/geoserver_data
-                """
                 for filename in os.listdir(tmpdir):
-                    if filename.endswith(".kml") or filename.endswith(".ppm"):
-                        continue
                     src_path = os.path.join(tmpdir, filename)
                     dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
                     with open(src_path, "rb") as src_file:
                         with open(dst_path, "wb") as dst_file:
                             dst_file.write(src_file.read())
-                """
 
                 with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
                     with open(
@@ -386,7 +384,9 @@ class Splat:
                                                 "obstructed": first_freshnel_obstruction,
                                                 "message": first_freshnel_message,
                                             },
-                                            "rx_signal_power": signal_power_line,
+                                            "rx_signal_power": float(signal_power_line)
+                                            + request.rx_gain
+                                            - request.rx_loss,
                                         }
                                     )
 
@@ -453,7 +453,7 @@ class Splat:
                             time_fraction=request.time_fraction,
                             tx_power=request.tx_power,
                             tx_gain=request.tx_gain,
-                            system_loss=request.system_loss,
+                            tx_loss=request.tx_loss,
                         )
                     )
 
@@ -705,7 +705,7 @@ class Splat:
                 f"{name}\n"
                 f"{latitude:.6f}\n"
                 f"{abs(longitude) if longitude < 0 else 360 - longitude:.6f}\n"  # SPLAT! expects west longitude as a positive number.
-                f"{elevation:.2f}\n"
+                f"{elevation:.2f}m\n"
             )
             logger.debug(f"Generated .qth file contents:\n{contents}")
             return contents.encode("utf-8")  # Return as bytes
@@ -733,7 +733,7 @@ class Splat:
         time_fraction: float,
         tx_power: float,
         tx_gain: float,
-        system_loss: float,
+        tx_loss: float,
     ) -> bytes:
         logger.debug("Generating .lrp file content.")
 
@@ -750,10 +750,11 @@ class Splat:
         polarization_map = {"horizontal": 0, "vertical": 1}
 
         # Calculate ERP in Watts
-        erp_watts = 10 ** ((tx_power + tx_gain - system_loss - 30) / 10)
+        erp = tx_power + (tx_gain - 2.15) - tx_loss  # in dBm
+        erp_watts = 10 ** ((erp - 30) / 10)  # Convert dBm to Watts
         logger.debug(
             f"Calculated ERP in Watts: {erp_watts:.2f} "
-            f"(tx_power={tx_power}, tx_gain={tx_gain}, system_loss={system_loss})"
+            f"(tx_power={tx_power}, tx_gain={tx_gain}, tx_loss={tx_loss})"
         )
 
         # Generate the content, maintaining the SPLAT! format

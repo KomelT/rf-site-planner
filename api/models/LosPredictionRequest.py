@@ -19,6 +19,9 @@ class LosPredictionRequest(BaseModel):
     )
     tx_power: float = Field(gt=0, description="Transmitter power in dBm (>= 1 dBm)")
     tx_gain: float = Field(1, ge=0, description="Transmitter antenna gain in dB (>= 0)")
+    tx_loss: Optional[float] = Field(
+        0.0, ge=0, description="TX loss in dB (default: 0.0)"
+    )
     frequency_mhz: float = Field(
         868.5, ge=20, le=30000, description="Operating frequency in MHz (20-30000 MHz)"
     )
@@ -34,6 +37,7 @@ class LosPredictionRequest(BaseModel):
         1, ge=1, description="Receiver height above ground in meters (>= 1 m)"
     )
     rx_gain: float = Field(1, ge=0, description="Receiver antenna gain in dB (>= 0)")
+    rx_loss: float = Field(0, ge=0, description="Receiver system loss in dB (>= 0)")
     signal_threshold: float = Field(
         -100, le=0, description="Signal cutoff in dBm (<= 0)"
     )
@@ -55,9 +59,6 @@ class LosPredictionRequest(BaseModel):
     )
 
     # Model Settings
-    system_loss: Optional[float] = Field(
-        0.0, ge=0, description="System loss in dB (default: 0.0)"
-    )
     radio_climate: Literal[
         "equatorial",
         "continental_subtropical",

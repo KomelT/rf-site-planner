@@ -24,12 +24,13 @@
 					<Button text="Fly to coordinates" @click="flyToMarker(simulation.tx_lon, simulation.tx_lat)" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Power (W)" v-model:value="simulation.tx_power" />
+					<InputNumber title="Power (dBm)" v-model:value="simulation.tx_power" />
 					<InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency_mhz" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="simulation.tx_height" />
-					<InputNumber title="Gain (dB)" v-model:value="simulation.tx_gain" />
+					<InputNumber title="Gain (dBi)" v-model:value="simulation.tx_gain" />
+					<InputNumber title="Loss (dB)" v-model:value="simulation.tx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Reciver options" markerColor="#3FB1CE" v-model:showSection="showSections.receiver">
@@ -44,11 +45,8 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="simulation.rx_height" />
-					<InputNumber title="Gain (dB)" v-model:value="simulation.rx_gain" />
-				</div>
-				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.signal_threshold" />
-					<InputNumber title="Cable loss (dB)" v-model:value="simulation.system_loss" />
+					<InputNumber title="Gain (dBi)" v-model:value="simulation.rx_gain" />
+					<InputNumber title="Loss (dB)" v-model:value="simulation.rx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
@@ -130,14 +128,15 @@ const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 		tx_lat: 45.85473269336,
 		tx_lon: 13.72616645611,
 		tx_height: 4,
-		tx_power: 0.1,
+		tx_power: 27,
 		tx_gain: 5,
+		tx_loss: 2,
 		frequency_mhz: 868.5,
 		rx_lat: 45.843544567,
 		rx_lon: 13.7343341751,
 		rx_height: 15,
 		rx_gain: 6.5,
-		system_loss: 2,
+		rx_loss: 2,
 		signal_threshold: -153,
 		radio_climate: "continental_temperate",
 		polarization: "vertical",
@@ -220,7 +219,7 @@ async function runSimulation() {
 	try {
 		const predictRes = await store.fetchLosSimulation({
 			...simulation.value,
-			tx_power: 10 * Math.log10(simulation.value.tx_power) + 30,
+			tx_power: simulation.value.tx_power,
 		});
 
 		if (!predictRes.ok)

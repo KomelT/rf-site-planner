@@ -12,12 +12,12 @@
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Power (W)" v-model:value="currentTransmitter.power" />
+					<InputNumber title="Power (dBm)" v-model:value="currentTransmitter.power" />
 					<InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency_mhz" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="currentTransmitter.height" />
-					<InputNumber title="Gain (dB)" v-model:value="currentTransmitter.gain" />
+					<InputNumber title="Gain (dBi)" v-model:value="currentTransmitter.gain" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Recivers options" :markerColor="currentReceiver.id"
@@ -42,7 +42,7 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" v-model:value="currentReceiver.height" />
-					<InputNumber title="Gain (dB)" v-model:value="currentReceiver.gain" />
+					<InputNumber title="Gain (dBi)" v-model:value="currentReceiver.gain" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
@@ -132,7 +132,7 @@ const defautltSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 			transmitter: {
 				height: 2,
 				gain: 2,
-				power: 0.1,
+				power: 27,
 			},
 			recivers: [
 				{
@@ -423,7 +423,7 @@ async function runSimulation() {
 					tx_lon: transmitter.lon,
 					tx_height: currentTransmitter.value.height,
 					tx_gain: currentTransmitter.value.gain,
-					tx_power: 10 * Math.log10(currentTransmitter.value.power) + 30,
+					tx_power: currentTransmitter.value.power,
 					rx_lat: receiver.lat,
 					rx_lon: receiver.lon,
 					rx_height: receiver.height,

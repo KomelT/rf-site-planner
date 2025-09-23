@@ -180,15 +180,22 @@ class Splat:
                     "-gpsav",
                     "-f",
                     f"{request.frequency_mhz}M",
+                    "-p",
+                    "terrain_profile_graph.png",
+                    "-e",
+                    "terrain_elevation_graph.png",
+                    "-h",
+                    "terrain_height_graph.png",
                     "-H",
                     "normalized_terrain_height_graph.png",
                     "-l",
                     "path_loss_graph.png",
-                    "-olditm",
-                    "-metric",
                     "-o",
                     "topo_map.ppm",
-                ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
+                    "-kml-gpsav",
+                    "-olditm",
+                    "-metric",
+                ]
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 
                 splat_result = subprocess.run(
@@ -356,8 +363,11 @@ class Splat:
                                         ):
                                             first_freshnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
 
-                                    # extract number from "Signal power level at rx: -110.14 dBm"
+                                    # extract numbers
                                     signal_power_line = ""
+                                    path_loss_line = ""
+                                    longley_rice_loss_line = ""
+
                                     for line in tx_to_rx_lines:
                                         if b"Signal power level at rx:" in line:
                                             signal_power_line = (
@@ -366,7 +376,20 @@ class Splat:
                                                 .strip()
                                                 .decode("utf-8")
                                             )
-                                            break
+                                        if b"Free space path loss:" in line:
+                                            path_loss_line = (
+                                                line.strip()
+                                                .split(b" ")[4]
+                                                .strip()
+                                                .decode("utf-8")
+                                            )
+                                        if b"Longley-Rice path loss:" in line:
+                                            longley_rice_loss_line = (
+                                                line.strip()
+                                                .split(b" ")[3]
+                                                .strip()
+                                                .decode("utf-8")
+                                            )
 
                                     return dumps(
                                         {
@@ -387,6 +410,10 @@ class Splat:
                                             "rx_signal_power": float(signal_power_line)
                                             + request.rx_gain
                                             - request.rx_loss,
+                                            "path_loss": float(path_loss_line),
+                                            "longley_rice_loss": float(
+                                                longley_rice_loss_line
+                                            ),
                                         }
                                     )
 

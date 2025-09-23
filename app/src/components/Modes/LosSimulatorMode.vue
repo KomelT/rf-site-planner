@@ -144,7 +144,7 @@ const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 		ground_dielectric: 15,
 		ground_conductivity: 0.005,
 		atmosphere_bending: 301,
-		situation_fraction: 95,
+		situation_fraction: 90,
 		time_fraction: 95,
 		high_resolution: false,
 	};
@@ -232,6 +232,8 @@ async function runSimulation() {
 		const lossData = JSON.parse(data.data) as unknown as LosSimulatorResponse;
 
 		store.losSimModeData.chart.rx_signal_power = lossData.rx_signal_power;
+		store.losSimModeData.chart.path_loss = lossData.path_loss;
+		store.losSimModeData.chart.longley_rice_loss = lossData.longley_rice_loss;
 		store.losSimModeData.chart.path.obstructed = lossData.path.obstructed;
 		store.losSimModeData.chart.path.message = lossData.path.message;
 		store.losSimModeData.chart.path.obstructions = lossData.path.obstructions;
@@ -267,7 +269,6 @@ async function runSimulation() {
 			},
 			yaxis: {
 				decimalsInFloat: 0,
-				min: 0,
 			},
 			xaxis: {
 				type: "numeric",
@@ -307,7 +308,7 @@ async function runSimulation() {
 							betwMarker.value.setLngLat(coordBetw);
 						}
 
-						return val.toFixed(1);
+						return val.toFixed(2) + " km";
 					},
 				}
 			}

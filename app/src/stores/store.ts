@@ -27,6 +27,8 @@ const useStore = defineStore("store", {
 					options: {} as ApexOptions,
 					show: false,
 					rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
+					path_loss: ref<LosSimulatorResponse["path_loss"]>(0),
+					longley_rice_loss: ref<LosSimulatorResponse["longley_rice_loss"]>(0),
 					path: {
 						obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
 						message: ref<LosSimulatorResponse["path"]["message"]>(""),
@@ -150,18 +152,24 @@ const useStore = defineStore("store", {
 		},
 		updateLocalStorage() {
 			localStorage.setItem("store", JSON.stringify({
-				coverSimModeData: this.coverSimModeData
+				coverSimModeData: this.coverSimModeData,
+				losSimModeData: this.losSimModeData
 			}));
 		},
 		loadFromLocalStorage() {
 			const storedData = localStorage.getItem("store");
 			if (storedData) {
 				const parsedData = JSON.parse(storedData);
-				this.coverSimModeData = parsedData.coverSimModeData;
+				if (parsedData.coverSimModeData) this.coverSimModeData = parsedData.coverSimModeData;
+				if (parsedData.losSimModeData) this.losSimModeData = parsedData.losSimModeData;
+
 			}
 		},
 		watchForChangesAndCommit() {
 			watch(this.coverSimModeData, () => {
+				this.updateLocalStorage();
+			});
+			watch(this.losSimModeData, () => {
 				this.updateLocalStorage();
 			});
 		},

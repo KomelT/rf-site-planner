@@ -31,7 +31,7 @@ export function processLosData(data: LosSimulatorResponse): {
 	const reducedFresnel: number[] = [];
 	const reducedReference: number[] = [];
 
-	const step = Math.floor(distance.length / 100);
+	const step = Math.ceil(distance.length / 300);
 	for (let i = 0; i < distance.length; i += step) {
 		reducedDistance.push(distance[i]);
 		reducedProfile.push(profile[i]);

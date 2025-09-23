@@ -68,6 +68,9 @@
 					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
 					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
 				</div>
+				<div class="flex flex-row gap-2 mt-2">
+					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
+				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
 				<Button text="Run simulation" @click="runSimulation" :loading="isSimulationRunning"
@@ -100,6 +103,7 @@ import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
+import Toggle from "../Inputs/Toggle.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
 
 const map = useMap();

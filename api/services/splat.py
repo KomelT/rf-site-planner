@@ -103,9 +103,6 @@ class Splat:
             try:
                 logger.debug(f"Temporary directory created: {tmpdir}")
 
-                # FIXME: Eventually support high-resolution terrain data
-                request.high_resolution = False
-
                 # determine the required terrain tiles
                 required_tiles = Splat._calculate_required_terrain_tiles_los(
                     request.tx_lat,

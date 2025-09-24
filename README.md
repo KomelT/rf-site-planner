@@ -1,5 +1,5 @@
 # RF Site Planner
-<a href="https://hub.docker.com/r/komelt/rf-site-planner-app" target="_blank">![APP](https://img.shields.io/badge/API-blue?logo=Docker)</a>
+<a href="https://hub.docker.com/r/komelt/rf-site-planner-app" target="_blank">![APP](https://img.shields.io/badge/APP-blue?logo=Docker)</a>
 <a href="https://hub.docker.com/r/komelt/rf-site-planner-api" target="_blank">![API](https://img.shields.io/badge/API-blue?logo=Docker)</a>
 <a href="https://hub.docker.com/r/komelt/splat-python" target="_blank">![Splat Python](https://img.shields.io/badge/Splat_Python-blue?logo=Docker)</a>
 

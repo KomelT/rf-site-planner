@@ -235,184 +235,206 @@ class Splat:
                             os.path.join(tmpdir, "fresnel.gp"), "rb"
                         ) as fresnel_file:
                             with open(
-                                os.path.join(tmpdir, "reference.gp"), "rb"
-                            ) as reference_file:
+                                os.path.join(tmpdir, "fresnel_pt_6.gp"), "rb"
+                            ) as fresnel_pt_6_file:
                                 with open(
-                                    os.path.join(tmpdir, "tx-to-rx.txt"), "rb"
-                                ) as tx_to_rx_file:
-                                    profile_data = profile_file.read()
-                                    curvature_data = curvature_file.read()
-                                    fresnel_data = fresnel_file.read()
-                                    reference_data = reference_file.read()
-                                    tx_to_rx_data = tx_to_rx_file.read()
+                                    os.path.join(tmpdir, "reference.gp"), "rb"
+                                ) as reference_file:
+                                    with open(
+                                        os.path.join(tmpdir, "tx-to-rx.txt"), "rb"
+                                    ) as tx_to_rx_file:
+                                        profile_data = profile_file.read()
+                                        curvature_data = curvature_file.read()
+                                        fresnel_data = fresnel_file.read()
+                                        reference_data = reference_file.read()
+                                        tx_to_rx_data = tx_to_rx_file.read()
 
-                                    profile_lines = profile_data.decode(
-                                        "utf-8"
-                                    ).splitlines()
-                                    curvature_lines = curvature_data.decode(
-                                        "utf-8"
-                                    ).splitlines()
-                                    fresnel_lines = fresnel_data.decode(
-                                        "utf-8"
-                                    ).splitlines()
-                                    reference_lines = reference_data.decode(
-                                        "utf-8"
-                                    ).splitlines()
+                                        profile_lines = profile_data.decode(
+                                            "utf-8"
+                                        ).splitlines()
+                                        curvature_lines = curvature_data.decode(
+                                            "utf-8"
+                                        ).splitlines()
+                                        fresnel_lines = fresnel_data.decode(
+                                            "utf-8"
+                                        ).splitlines()
+                                        reference_lines = reference_data.decode(
+                                            "utf-8"
+                                        ).splitlines()
 
-                                    distance = []
-                                    profile = []
-                                    curvature = []
-                                    fresnel = []
-                                    reference = []
+                                        distance = []
+                                        profile = []
+                                        curvature = []
+                                        fresnel = []
+                                        fresnel_pt_6 = []
+                                        reference = []
 
-                                    for line in profile_lines:
-                                        try:
-                                            d, p = line.split("\t")
-                                            distance.append(float(d))
-                                            profile.append(float(p))
-                                        except ValueError:
-                                            logger.warning(
-                                                f"Skipping invalid line in profile: {line}"
-                                            )
-
-                                    for line in curvature_lines:
-                                        try:
-                                            d, c = line.split("\t")
-                                            curvature.append(float(c))
-                                        except ValueError:
-                                            logger.warning(
-                                                f"Skipping invalid line in curvature: {line}"
-                                            )
-
-                                    for line in fresnel_lines:
-                                        try:
-                                            d, f = line.split("\t")
-                                            fresnel.append(float(f))
-                                        except ValueError:
-                                            logger.warning(
-                                                f"Skipping invalid line in fresnel: {line}"
-                                            )
-
-                                    for line in reference_lines:
-                                        try:
-                                            d, r = line.split("\t")
-                                            reference.append(float(r))
-                                        except ValueError:
-                                            logger.warning(
-                                                f"Skipping invalid line in reference: {line}"
-                                            )
-
-                                    tx_to_rx_lines = tx_to_rx_data.splitlines()
-                                    path_obstruction = True
-                                    path_message = ""
-                                    path_obstructions = []
-
-                                    first_freshnel_obstruction = True
-                                    first_freshnel_message = ""
-
-                                    for i, line in enumerate(tx_to_rx_lines):
-                                        if (
-                                            b"No obstructions to LOS path due to terrain were detected by SPLAT!"
-                                            in line
-                                        ):
-                                            path_obstruction = False
-                                        elif (
-                                            b"The first Fresnel zone is clear." in line
-                                        ):
-                                            first_freshnel_obstruction = False
-
-                                        elif (
-                                            b"Between rx and tx, SPLAT! detected obstructions at:"
-                                            in line
-                                        ):
-                                            for line in tx_to_rx_lines[i + 2 :]:
-                                                if line.strip() == b"":
-                                                    break
-
-                                                decoded_parts = [
-                                                    part.decode("utf-8").strip()
-                                                    for part in line.strip().split(
-                                                        b", "
-                                                    )
-                                                ]
-
-                                                decoded_parts = [
-                                                    float(part.split(" ")[0])
-                                                    for part in decoded_parts
-                                                ]
-
-                                                val = decoded_parts[1]
-                                                original_longitude = (
-                                                    360 - val if val > 180 else -val
+                                        for line in profile_lines:
+                                            try:
+                                                d, p = line.split("\t")
+                                                distance.append(float(d))
+                                                profile.append(float(p))
+                                            except ValueError:
+                                                logger.warning(
+                                                    f"Skipping invalid line in profile: {line}"
                                                 )
-                                                decoded_parts[1] = original_longitude
 
-                                                path_obstructions.append(decoded_parts)
+                                        for line in curvature_lines:
+                                            try:
+                                                d, c = line.split("\t")
+                                                curvature.append(float(c))
+                                            except ValueError:
+                                                logger.warning(
+                                                    f"Skipping invalid line in curvature: {line}"
+                                                )
 
-                                        elif (
-                                            b"to clear all obstructions detected by SPLAT!."
-                                            in line
-                                        ):
-                                            path_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                        for line in fresnel_lines:
+                                            try:
+                                                d, f = line.split("\t")
+                                                fresnel.append(float(f))
+                                            except ValueError:
+                                                logger.warning(
+                                                    f"Skipping invalid line in fresnel: {line}"
+                                                )
 
-                                        elif (
-                                            b"to clear the first Fresnel zone." in line
-                                        ):
-                                            first_freshnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                        for line in fresnel_pt_6_file:
+                                            try:
+                                                d, f = line.decode("utf-8").split("\t")
+                                                fresnel_pt_6.append(float(f))
+                                            except ValueError:
+                                                logger.warning(
+                                                    f"Skipping invalid line in fresnel_pt_6: {line}"
+                                                )
 
-                                    # extract numbers
-                                    signal_power_line = ""
-                                    path_loss_line = ""
-                                    longley_rice_loss_line = ""
+                                        for line in reference_lines:
+                                            try:
+                                                d, r = line.split("\t")
+                                                reference.append(float(r))
+                                            except ValueError:
+                                                logger.warning(
+                                                    f"Skipping invalid line in reference: {line}"
+                                                )
 
-                                    for line in tx_to_rx_lines:
-                                        if b"Signal power level at rx:" in line:
-                                            signal_power_line = (
-                                                line.strip()
-                                                .split(b" ")[5]
-                                                .strip()
-                                                .decode("utf-8")
-                                            )
-                                        if b"Free space path loss:" in line:
-                                            path_loss_line = (
-                                                line.strip()
-                                                .split(b" ")[4]
-                                                .strip()
-                                                .decode("utf-8")
-                                            )
-                                        if b"Longley-Rice path loss:" in line:
-                                            longley_rice_loss_line = (
-                                                line.strip()
-                                                .split(b" ")[3]
-                                                .strip()
-                                                .decode("utf-8")
-                                            )
+                                        tx_to_rx_lines = tx_to_rx_data.splitlines()
+                                        path_obstruction = True
+                                        path_message = ""
+                                        path_obstructions = []
 
-                                    return dumps(
-                                        {
-                                            "distance": distance,
-                                            "profile": profile,
-                                            "curvature": curvature,
-                                            "fresnel": fresnel,
-                                            "reference": reference,
-                                            "path": {
-                                                "obstructed": path_obstruction,
-                                                "message": path_message,
-                                                "obstructions": path_obstructions,
-                                            },
-                                            "first_freshnel": {
-                                                "obstructed": first_freshnel_obstruction,
-                                                "message": first_freshnel_message,
-                                            },
-                                            "rx_signal_power": float(signal_power_line)
-                                            + request.rx_gain
-                                            - request.rx_loss,
-                                            "path_loss": float(path_loss_line),
-                                            "longley_rice_loss": float(
-                                                longley_rice_loss_line
-                                            ),
-                                        }
-                                    )
+                                        first_freshnel_obstruction = True
+                                        first_freshnel_message = ""
+
+                                        for i, line in enumerate(tx_to_rx_lines):
+                                            if (
+                                                b"No obstructions to LOS path due to terrain were detected by SPLAT!"
+                                                in line
+                                            ):
+                                                path_obstruction = False
+                                            elif (
+                                                b"The first Fresnel zone is clear."
+                                                in line
+                                            ):
+                                                first_freshnel_obstruction = False
+
+                                            elif (
+                                                b"Between rx and tx, SPLAT! detected obstructions at:"
+                                                in line
+                                            ):
+                                                for line in tx_to_rx_lines[i + 2 :]:
+                                                    if line.strip() == b"":
+                                                        break
+
+                                                    decoded_parts = [
+                                                        part.decode("utf-8").strip()
+                                                        for part in line.strip().split(
+                                                            b", "
+                                                        )
+                                                    ]
+
+                                                    decoded_parts = [
+                                                        float(part.split(" ")[0])
+                                                        for part in decoded_parts
+                                                    ]
+
+                                                    val = decoded_parts[1]
+                                                    original_longitude = (
+                                                        360 - val if val > 180 else -val
+                                                    )
+                                                    decoded_parts[1] = (
+                                                        original_longitude
+                                                    )
+
+                                                    path_obstructions.append(
+                                                        decoded_parts
+                                                    )
+
+                                            elif (
+                                                b"to clear all obstructions detected by SPLAT!."
+                                                in line
+                                            ):
+                                                path_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+
+                                            elif (
+                                                b"to clear the first Fresnel zone."
+                                                in line
+                                            ):
+                                                first_freshnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+
+                                        # extract numbers
+                                        signal_power_line = ""
+                                        path_loss_line = ""
+                                        longley_rice_loss_line = ""
+
+                                        for line in tx_to_rx_lines:
+                                            if b"Signal power level at rx:" in line:
+                                                signal_power_line = (
+                                                    line.strip()
+                                                    .split(b" ")[5]
+                                                    .strip()
+                                                    .decode("utf-8")
+                                                )
+                                            if b"Free space path loss:" in line:
+                                                path_loss_line = (
+                                                    line.strip()
+                                                    .split(b" ")[4]
+                                                    .strip()
+                                                    .decode("utf-8")
+                                                )
+                                            if b"Longley-Rice path loss:" in line:
+                                                longley_rice_loss_line = (
+                                                    line.strip()
+                                                    .split(b" ")[3]
+                                                    .strip()
+                                                    .decode("utf-8")
+                                                )
+
+                                        return dumps(
+                                            {
+                                                "distance": distance,
+                                                "profile": profile,
+                                                "curvature": curvature,
+                                                "fresnel": fresnel,
+                                                "fresnel_pt_6": fresnel_pt_6,
+                                                "reference": reference,
+                                                "path": {
+                                                    "obstructed": path_obstruction,
+                                                    "message": path_message,
+                                                    "obstructions": path_obstructions,
+                                                },
+                                                "first_freshnel": {
+                                                    "obstructed": first_freshnel_obstruction,
+                                                    "message": first_freshnel_message,
+                                                },
+                                                "rx_signal_power": float(
+                                                    signal_power_line
+                                                )
+                                                + request.rx_gain
+                                                - request.rx_loss,
+                                                "path_loss": float(path_loss_line),
+                                                "longley_rice_loss": float(
+                                                    longley_rice_loss_line
+                                                ),
+                                            }
+                                        )
 
             except Exception as e:
                 logger.error(f"Error during LOS prediction: {e}")

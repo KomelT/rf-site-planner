@@ -258,6 +258,10 @@ async function runSimulation() {
 				data: lossProcessedData.fresnel,
 			},
 			{
+				name: "Fresnel zone 60% (m)",
+				data: lossProcessedData.fresnel_pt_6,
+			},
+			{
 				name: "Point to point (m)",
 				data: lossProcessedData.reference,
 			},
@@ -327,6 +331,7 @@ async function runSimulation() {
 			hideAfter: 2000,
 		});
 	} catch (e) {
+		console.error(e);
 		notificationStore.addNotification({
 			type: "error",
 			message: "Simulation failed",

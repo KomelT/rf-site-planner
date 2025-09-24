@@ -161,7 +161,10 @@ const useStore = defineStore("store", {
 			if (storedData) {
 				const parsedData = JSON.parse(storedData);
 				if (parsedData.coverSimModeData) this.coverSimModeData = parsedData.coverSimModeData;
-				if (parsedData.losSimModeData) this.losSimModeData = parsedData.losSimModeData;
+				if (parsedData.losSimModeData) {
+					this.losSimModeData = parsedData.losSimModeData;
+					this.losSimModeData.chart.show = false;
+				}
 
 			}
 		},

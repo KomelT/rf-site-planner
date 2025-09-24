@@ -46,6 +46,7 @@ export type LosSimulatorResponse = {
 	profile: number[];
 	curvature: number[];
 	fresnel: number[];
+	fresnel_pt_6: number[];
 	reference: number[];
 	path: {
 		obstructed: boolean;

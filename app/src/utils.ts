@@ -141,8 +141,6 @@ export function processLosData(data: LosSimulatorResponse): {
 		profile, curvature, fresnel, fresnel_pt_6, reference
 	], maxPoints, 5).aligned;
 
-	console.log(`Downsampled LOS data from ${distance.length} to ${reducedDistance.length} points.`);
-
 	return {
 		distance: reducedDistance,
 		profile: reducedProfile,

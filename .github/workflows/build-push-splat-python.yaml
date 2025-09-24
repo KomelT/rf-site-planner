@@ -1,7 +1,5 @@
 name: build-push-splat-python
 
-concurrency: Production
-
 on:
   schedule:
     - cron: "0 0 * * 0"
@@ -14,6 +12,7 @@ jobs:
   build-and-push:
     name: Build and Push Splat Python Image
     runs-on: ubuntu-latest
+    environment: Production
     steps:
       - name: Checkout code
         uses: actions/checkout@v4

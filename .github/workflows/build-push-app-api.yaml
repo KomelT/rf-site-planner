@@ -1,5 +1,7 @@
 name: build-push-app-api
 
+concurrency: Production
+
 on:
   workflow_dispatch:
   push:

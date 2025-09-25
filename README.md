@@ -14,7 +14,19 @@ pipreqs --force .
 ```
 
 ## Splat
+- [Website](https://www.qsl.net/kd2bd/splat.html)
 - [Documentaion](https://www.qsl.net/kd2bd/splat.pdf)
+
+### Elevation data source
+Elevation data was downloaded from [viewfinderpanoramas.org](https://viewfinderpanoramas.org/).
+- [1" download map](https://viewfinderpanoramas.org/Coverage%20map%20viewfinderpanoramas_org1.htm)
+- [3" download map](https://viewfinderpanoramas.org/Coverage%20map%20viewfinderpanoramas_org3.htm)
+
+**Command to convert .hgt into Splat Data File .sdf**\
+Use `srtm2sdf` for 3" datafiles and `srtm2sdf-hd` for 1" datafiles.
+```bash
+for file in ../*.hgt; do srtm2sdf -d . $file; done
+```
 
 ## Helpful Splat info
 - [jeremyclark.ca/wp/telecom/splat-antenna-patterns](https://jeremyclark.ca/wp/telecom/splat-antenna-patterns/)

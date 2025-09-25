@@ -65,8 +65,9 @@
 					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
 					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
 				</div>
-				<div class="mt-3">
+				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Max range (km)" v-model:value="simulation.radius" />
+					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
 				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
@@ -101,6 +102,7 @@ import InputText from "../Inputs/InputText.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
 import { isMobileDevice, randomHexColor } from "../../utils";
 import { onBeforeMount } from "vue";
+import Toggle from "../Inputs/Toggle.vue";
 
 const map = useMap();
 const store = useStore();

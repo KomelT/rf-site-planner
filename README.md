@@ -7,10 +7,24 @@
 
 ## Development
 
+### Preparing DEV ENV
+```bash
+# create dev version of .env
+cp .env.sample .env
+
+# install front-end app dependencies
+cd app && yarn && cd ..
+
+# create ven and install backend api dependencies
+python -m venv .venv && source .venv/bin/activate && cd api && ../.venv/bin/python3 -m pip install -r requirements.txt && cd ..
+
+# start whole stack up
+docker compose up
+```
+
 ### Updating API requirements
 ```bash
-cd api
-pipreqs --force .
+cd api && pipreqs --force .
 ```
 
 ## Splat

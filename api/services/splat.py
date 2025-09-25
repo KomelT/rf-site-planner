@@ -1,4 +1,3 @@
-import gzip
 import io
 import logging
 import math
@@ -9,26 +8,17 @@ import xml.etree.ElementTree as ET
 from json import dumps
 from typing import List, Literal, Tuple
 
-import boto3
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-from botocore import UNSIGNED
-from botocore.config import Config
-from botocore.exceptions import ClientError
-from diskcache import Cache
+import requests
 from models.CoveragePredictionRequest import CoveragePredictionRequest
 from models.LosPredictionRequest import LosPredictionRequest
 from PIL import Image
-from rasterio.enums import Resampling
-from rasterio.transform import Affine, from_bounds
+from rasterio.transform import from_bounds
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-logging.getLogger("boto3").setLevel(logging.WARNING)
-logging.getLogger("botocore").setLevel(logging.WARNING)
-logging.getLogger("s3transfer").setLevel(logging.WARNING)
-logging.getLogger("urllib3").setLevel(logging.WARNING)
 
 
 class Splat:
@@ -36,9 +26,7 @@ class Splat:
         self,
         splat_path: str,
         cache_dir: str = ".splat_tiles",
-        cache_size_gb: float = 1.0,
-        bucket_name: str = "elevation-tiles-prod",
-        bucket_prefix: str = "v2/skadi",
+        terrain_base_url: str = "https://gis.komelt.dev/static/dem/sdf",
     ):
         # Check the provided SPLAT! path exists
         if not os.path.isdir(splat_path):
@@ -48,12 +36,15 @@ class Splat:
 
         # SPLAT! binaries
         self.splat_binary = os.path.join(splat_path, "splat")  # core SPLAT! program
+
         self.splat_hd_binary = os.path.join(
             splat_path, "splat-hd"
         )  # used instead of the splat binary when using the 1-arcsecond / 30 meter resolution terrain data.
+
         self.srtm2sdf_binary = os.path.join(
             splat_path, "srtm2sdf"
         )  # convert 3-arcsecond resolution srtm .hgt terrain tiles to SPLAT! .sdf terrain tiles.
+
         self.srtm2sdf_hd_binary = os.path.join(
             splat_path, "srtm2sdf-hd"
         )  # used instead of srtm2sdf when using the 1-arcsecond / 30 meter resolution terrain data.
@@ -65,12 +56,14 @@ class Splat:
             raise FileNotFoundError(
                 f"'splat' binary not found or not executable at '{self.splat_binary}'"
             )
+
         if not os.path.isfile(self.splat_hd_binary) or not os.access(
             self.splat_hd_binary, os.X_OK
         ):
             raise FileNotFoundError(
                 f"'splat-hd' binary not found or not executable at '{self.splat_hd_binary}'"
             )
+
         if not os.path.isfile(self.srtm2sdf_binary) or not os.access(
             self.srtm2sdf_binary, os.X_OK
         ):
@@ -84,17 +77,11 @@ class Splat:
                 f"'srtm2sdf_hd_binary' binary not found or not executable at '{self.srtm2sdf_hd_binary}'"
             )
 
-        self.tile_cache = Cache(
-            cache_dir, size_limit=int(cache_size_gb * 1024 * 1024 * 1024)
-        )
+        self.tile_cache = os.path.join(os.getcwd(), cache_dir)
+        os.makedirs(self.tile_cache, exist_ok=True)
+        logger.info(f"Using tile cache directory: {self.tile_cache}")
 
-        self.s3 = boto3.client("s3", config=Config(signature_version=UNSIGNED))
-        self.bucket_name = bucket_name
-        self.bucket_prefix = bucket_prefix
-
-        logger.info(
-            f"Initialized SPLAT! with terrain tile cache at '{cache_dir}' with a size limit of {cache_size_gb} GB."
-        )
+        self.terrain_base_url = terrain_base_url
 
     def los_prediction(self, request: LosPredictionRequest) -> bytes:
         logger.debug(f"LOS prediction request: {request.json()}")
@@ -111,9 +98,7 @@ class Splat:
                     request.rx_lon,
                 )
 
-                self._download_convert_tiles(
-                    self, required_tiles, request.high_resolution, tmpdir
-                )
+                self._download_terrain_tile(required_tiles, request.high_resolution)
 
                 # write transmitter qth file
                 with open(os.path.join(tmpdir, "tx.qth"), "wb") as qth_file:
@@ -156,8 +141,6 @@ class Splat:
                         )
                     )
 
-                logger.debug(f"Contents of {tmpdir}: {os.listdir(tmpdir)}")
-
                 splat_command = [
                     (
                         self.splat_hd_binary
@@ -174,7 +157,8 @@ class Splat:
                     str(request.clutter_height),
                     "-db",
                     str(request.signal_threshold),
-                    "-gpsav",
+                    "-d",
+                    self.tile_cache,
                     "-f",
                     f"{request.frequency_mhz}M",
                     "-p",
@@ -189,9 +173,10 @@ class Splat:
                     "path_loss_graph.png",
                     "-o",
                     "topo_map.ppm",
-                    "-kml-gpsav",
-                    "-olditm",
+                    "-kml",
+                    "-gpsav",
                     "-metric",
+                    "-olditm",
                 ]
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 
@@ -202,8 +187,6 @@ class Splat:
                     text=True,
                     check=False,
                 )
-
-                logger.debug(f"Contents of {tmpdir}: {os.listdir(tmpdir)}")
 
                 logger.debug(f"SPLAT! stdout:\n{splat_result.stdout}")
                 logger.debug(f"SPLAT! stderr:\n{splat_result.stderr}")
@@ -462,20 +445,7 @@ class Splat:
                     request.lat, request.lon, request.radius
                 )
 
-                # download and convert terrain tiles to SPLAT! sdf
-                for tile_name, sdf_name, sdf_hd_name in required_tiles:
-                    tile_data = self._download_terrain_tile(tile_name)
-                    sdf_data = self._convert_hgt_to_sdf(
-                        tile_data, tile_name, high_resolution=request.high_resolution
-                    )
-
-                    with open(
-                        os.path.join(
-                            tmpdir, sdf_hd_name if request.high_resolution else sdf_name
-                        ),
-                        "wb",
-                    ) as sdf_file:
-                        sdf_file.write(sdf_data)
+                self._download_terrain_tile(required_tiles, request.high_resolution)
 
                 # write transmitter / qth file
                 with open(os.path.join(tmpdir, "tx.qth"), "wb") as qth_file:
@@ -525,6 +495,8 @@ class Splat:
                     "tx.qth",
                     "-L",
                     str(request.rx_height),
+                    "-d",
+                    self.tile_cache,
                     "-metric",
                     "-R",
                     str(request.radius / 1000.0),
@@ -581,6 +553,14 @@ class Splat:
             except Exception as e:
                 logger.error(f"Error during coverage prediction: {e}")
                 raise RuntimeError(f"Error during coverage prediction: {e}")
+
+    @staticmethod
+    def _dir_content(dir: str) -> List[str]:
+        try:
+            return os.listdir(dir)
+        except Exception as e:
+            logger.error(f"Error accessing temporary directory '{dir}': {e}")
+            return []
 
     @staticmethod
     def _calculate_required_terrain_tiles_los(
@@ -660,9 +640,7 @@ class Splat:
             )
             tile_names.append((tile_name, sdf_filename, sdf_hd_filename))
 
-        logger.debug(
-            "Required terrain tile names (optimized for line-of-sight): %s", tile_names
-        )
+        logger.debug("Required terrain tile names for line-of-sight: %s", tile_names)
         return tile_names
 
     @staticmethod
@@ -713,31 +691,6 @@ class Splat:
         logger.debug("required tile names are: ")
         logger.debug(tile_names)
         return tile_names
-
-    @staticmethod
-    def _download_convert_tiles(
-        self,
-        required_tiles: List[Tuple[str, str, str]],
-        high_resolution: bool,
-        tmpdir: str,
-    ) -> None:
-        # download and convert terrain tiles to SPLAT! sdf
-        for tile_name, sdf_name, sdf_hd_name in required_tiles:
-            tile_data = self._download_terrain_tile(tile_name)
-            sdf_data = self._convert_hgt_to_sdf(
-                tile_data,
-                tile_name,
-                high_resolution=high_resolution,
-            )
-
-            with open(
-                os.path.join(
-                    tmpdir,
-                    sdf_hd_name if high_resolution else sdf_name,
-                ),
-                "wb",
-            ) as sdf_file:
-                sdf_file.write(sdf_data)
 
     @staticmethod
     def _create_splat_qth(
@@ -958,40 +911,46 @@ class Splat:
             logger.error(f"Error during GeoTIFF generation: {e}")
             raise RuntimeError(f"Error during GeoTIFF generation: {e}")
 
-    def _download_terrain_tile(self, tile_name: str) -> bytes:
-        if tile_name in self.tile_cache:
-            logger.info(f"Cache hit: {tile_name} found in the local cache.")
-            return self.tile_cache[tile_name]
-
-        # Download the tile from S3 if not in cache
-        tile_dir_prefix = tile_name[:3]
-        s3_key = f"{self.bucket_prefix}/{tile_dir_prefix}/{tile_name}"
-        logger.info(f"Downloading {tile_name} from {self.bucket_name}/{s3_key}...")
-        try:
-            obj = self.s3.get_object(Bucket=self.bucket_name, Key=s3_key)
-            tile_data = obj["Body"].read()
-            # Store the tile in the cache
-            self.tile_cache[tile_name] = tile_data
-            return tile_data
-        except ClientError as e:
-            if e.response["Error"]["Code"] == "NoSuchKey":
-                logger.info(
-                    f"Tile {tile_name} not found in S3 bucket, trying to download V1 SRTM data instead: {e}"
-                )
-                s3_key = f"skadi/{tile_dir_prefix}/{tile_name}"
-                obj = self.s3.get_object(Bucket=self.bucket_name, Key=s3_key)
-                tile_data = obj["Body"].read()
-                # Store the tile in the cache
-                self.tile_cache[tile_name] = tile_data
-                return tile_data
+    def _download_terrain_tile(
+        self, required_tiles: List[Tuple[str, str, str]], high_resolution
+    ) -> bytes:
+        for tile_name, sdf_name, sdf_hd_name in required_tiles:
+            url = ""
+            # Check cache first
+            if high_resolution:
+                # HD mode -> require sdf_hd_name
+                if sdf_hd_name in self._dir_content(self.tile_cache):
+                    logger.info(f"Cache hit (HD): {tile_name} found in tile cache.")
+                    continue
+                url = f"{self.terrain_base_url}/1-arc/{sdf_hd_name}"
             else:
-                logger.error(
-                    f"Failed to download {tile_name} from S3 due to ClientError: {e}"
+                # Normal mode -> require sdf_name
+                if sdf_name in self._dir_content(self.tile_cache):
+                    logger.info(f"Cache hit: {tile_name} found in tile cache.")
+                    continue
+                url = f"{self.terrain_base_url}/3-arc/{sdf_name}"
+
+            # Download the tile
+            logger.info(f"Downloading terrain tile from {url}.")
+            response = requests.get(url)
+            if response.status_code != 200:
+                logger.error(f"Failed to download terrain tile: {tile_name} from {url}")
+                raise RuntimeError(
+                    f"Failed to download terrain tile: {tile_name} from {url}"
                 )
-                raise
-        except Exception as e:
-            logger.error(f"Failed to download {tile_name} from S3: {e}")
-            raise
+
+            logger.info(f"Tile cache directory: {self.tile_cache}")
+            logger.info(f"Tile cache content: {self._dir_content(self.tile_cache)}")
+
+            # Save to cache directory
+            with open(
+                os.path.join(
+                    self.tile_cache,
+                    sdf_hd_name if high_resolution else sdf_name,
+                ),
+                "wb",
+            ) as sdf_file:
+                sdf_file.write(response.content)
 
     @staticmethod
     def _hgt_filename_to_sdf_filename(
@@ -1004,113 +963,6 @@ class Splat:
         min_lon = 360 - min_lon if hgt_filename[3] == "E" else min_lon
         max_lon = 0 if min_lon == 359 else min_lon + 1
         return f"{lat}:{lat + 1}:{min_lon}:{max_lon}{'-hd.sdf' if high_resolution else '.sdf'}"
-
-    def _convert_hgt_to_sdf(
-        self, tile: bytes, tile_name: str, high_resolution: bool = False
-    ) -> bytes:
-        sdf_filename = Splat._hgt_filename_to_sdf_filename(tile_name, high_resolution)
-
-        # Check cache for converted file
-        if sdf_filename in self.tile_cache:
-            logger.info(f"Cache hit: {sdf_filename} found in the local cache.")
-            return self.tile_cache[sdf_filename]
-
-        # Create temporary working directory
-        with tempfile.TemporaryDirectory() as tmpdir:
-            try:
-                # Decompress the tile into the temporary directory
-                hgt_path = os.path.join(tmpdir, tile_name.replace(".gz", ""))
-                logger.info(f"Decompressing {tile_name} into {hgt_path}.")
-                with gzip.GzipFile(fileobj=io.BytesIO(tile)) as gz_file:
-                    with open(hgt_path, "wb") as hgt_file:
-                        hgt_file.write(gz_file.read())
-
-                # Downsample to 3-arcsecond resolution if not in high-resolution mode
-                if not high_resolution:
-                    try:
-                        logger.info(
-                            f"Downsampling {hgt_path} to 3-arcsecond resolution."
-                        )
-                        with rasterio.open(hgt_path) as src:
-                            # Apply a scaling factor to transform for 3-arcsecond resolution
-                            scale_factor = (
-                                3  # 3-arcsecond is 3 times coarser than 1-arcsecond
-                            )
-                            transform = src.transform * Affine.scale(
-                                scale_factor, scale_factor
-                            )
-
-                            # Resample data to 3-arcsecond resolution
-                            data = src.read(
-                                # 3-arcsecond SRTM tiles always have dimensions of 1201x1201 pixels.
-                                out_shape=(
-                                    src.count,  # Number of bands
-                                    1201,  # Downsampled height
-                                    1201,  # Downsampled width
-                                ),
-                                resampling=Resampling.average,
-                            )
-
-                            # Update metadata for the new dataset
-                            meta = src.meta.copy()
-                            meta.update(
-                                {
-                                    "transform": transform,
-                                    "width": 1201,
-                                    "height": 1201,
-                                }
-                            )
-
-                        # Overwrite the temporary file with downsampled data
-                        with rasterio.open(hgt_path, "w", **meta) as dst:
-                            dst.write(data)
-
-                        logger.info(f"Successfully downsampled {hgt_path}.")
-                    except Exception as e:
-                        logger.error(f"Failed to downsample {hgt_path}: {e}")
-                        raise RuntimeError(f"Downsampling error for {hgt_path}: {e}")
-
-                # Call srtm2sdf or srtm2sdf-hd in the temporary directory
-                cmd = (
-                    self.srtm2sdf_hd_binary if high_resolution else self.srtm2sdf_binary
-                )
-                logger.info(f"Converting {hgt_path} to {sdf_filename} using {cmd}.")
-                result = subprocess.run(
-                    [cmd, os.path.basename(tile_name.replace(".gz", ""))],
-                    cwd=tmpdir,
-                    capture_output=True,
-                    text=True,
-                    check=True,
-                )
-
-                logger.debug(f"srtm2sdf output:\n{result.stderr}")
-                sdf_path = os.path.join(tmpdir, sdf_filename)
-
-                # Ensure the .sdf file was created
-                if not os.path.exists(sdf_path):
-                    logger.error(f"Expected .sdf file not found: {sdf_path}")
-                    raise RuntimeError(f"Failed to generate .sdf file: {sdf_path}")
-
-                # Read and cache the .sdf file
-                with open(sdf_path, "rb") as sdf_file:
-                    sdf_data = sdf_file.read()
-                self.tile_cache[sdf_filename] = sdf_data
-
-                logger.info(f"Successfully converted and cached {sdf_filename}.")
-                return sdf_data
-
-            except subprocess.CalledProcessError as e:
-                logger.error(f"Subprocess error during conversion of {tile_name}: {e}")
-                logger.error(f"stderr: {e.stderr}")
-                raise RuntimeError(
-                    f"Subprocess error during conversion of {tile_name}: {e}"
-                )
-
-            except Exception as e:
-                logger.error(
-                    f"Error during conversion of {tile_name} to {sdf_filename}: {e}"
-                )
-                raise RuntimeError(f"Conversion error for {tile_name}: {e}")
 
 
 if __name__ == "__main__":

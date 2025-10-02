@@ -123,7 +123,7 @@ const polygonMarkers: Ref<Marker[]> = ref([]);
 
 const simulations: Ref<AreaCenterNodeSimulatorSite[]> = ref([]);
 
-const defautltSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
+const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 	computed(() => {
 		return {
 			id: simulations.value.length.toString(),
@@ -167,7 +167,7 @@ const defautltSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 	});
 
 if (simulations.value.length === 0) {
-	simulations.value.push(defautltSimulationValues.value);
+	simulations.value.push(defaultSimulationValues.value);
 }
 
 const currentTransmitter = ref(simulations.value[0].transmitter);

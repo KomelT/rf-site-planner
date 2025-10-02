@@ -17,7 +17,7 @@ class CoveragePredictionRequest(BaseModel):
     tx_height: float = Field(
         1, ge=1, description="Transmitter height above ground in meters (>= 1 m)"
     )
-    tx_power: float = Field(gt=0, description="Transmitter power in dBm (>= 1 dBm)")
+    tx_power: float = Field(gt=1, description="Transmitter power in dBm (>= 1 dBm)")
     tx_gain: float = Field(1, ge=0, description="Transmitter antenna gain in dB (>= 0)")
     tx_loss: Optional[float] = Field(
         0.0, ge=0, description="TX loss in dB (default: 0.0)"
@@ -56,7 +56,7 @@ class CoveragePredictionRequest(BaseModel):
 
     # Model Settings
     radius: float = Field(
-        1000.0, ge=1, description="Model maximum range in meters (>= 1 m)"
+        1.0, ge=1.0, description="Model maximum range in kilometers (>= 1 km)"
     )
     radio_climate: Literal[
         "equatorial",

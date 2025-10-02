@@ -140,7 +140,7 @@ const markers: Ref<Marker[]> = ref([]);
 
 const simulations: Ref<CenterNodeSimulatorSite[]> = ref([]);
 
-const defautltSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
+const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 	() => {
 		return {
 			id: simulations.value.length.toString(),
@@ -191,7 +191,7 @@ const defautltSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 );
 
 if (simulations.value.length === 0) {
-	simulations.value.push(defautltSimulationValues.value);
+	simulations.value.push(defaultSimulationValues.value);
 }
 
 const currentTransmitter = ref(simulations.value[0].transmitter[0]);

@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="w-full">
     <label for="number" class="block text-sm/6 font-medium text-gray-200">{{ props.title }}</label>
     <div class="mt-0.5">
       <input type="number" v-model="value" name="number" id="number" :max="props.max" :min="props.min"

@@ -125,7 +125,7 @@ const showSections = ref({
 	simulationsOptions: false,
 });
 
-const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
+const defaultSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 	return {
 		id: store.losSimModeData.simulations.length.toString(),
 		title: `Simulation ${store.losSimModeData.simulations.length}`,
@@ -155,7 +155,7 @@ const defautltSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 });
 
 if (store.losSimModeData.simulations.length === 0) {
-	store.losSimModeData.simulations.push(defautltSimulationValues.value);
+	store.losSimModeData.simulations.push(defaultSimulationValues.value);
 }
 
 const simulationsOptions = computed(() => {
@@ -417,7 +417,7 @@ function flyToMarker(lon: number, lat: number) {
 }
 
 function addSimulation() {
-	store.losSimModeData.simulations.push(defautltSimulationValues.value);
+	store.losSimModeData.simulations.push(defaultSimulationValues.value);
 	simulation.value = store.losSimModeData.simulations[store.losSimModeData.simulations.length - 1];
 }
 

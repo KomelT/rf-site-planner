@@ -430,16 +430,17 @@ class Splat:
             try:
                 logger.debug(f"Temporary directory created: {tmpdir}")
 
-                # Set hard limit of 100 km radius
-                if request.radius > 100000:
+                # Set hard limit of 300 km radius
+                logger.debug(f"Requested radius: {request.radius} km")
+                if request.radius > 300:
                     logger.debug(
-                        f"User tried to set radius of {request.radius} meters, setting to 100 km."
+                        f"User tried to set radius of {request.radius} km, setting to 300 km instead."
                     )
-                    request.radius = 100000
+                    request.radius = 300
 
                 # determine the required terrain tiles
                 required_tiles = Splat._calculate_required_terrain_tiles_coverage(
-                    request.lat, request.lon, request.radius
+                    request.lat, request.lon, request.radius * 1000
                 )
 
                 self._download_terrain_tile(required_tiles, request.high_resolution)
@@ -496,7 +497,7 @@ class Splat:
                     self.tile_cache,
                     "-metric",
                     "-R",
-                    str(request.radius / 1000.0),
+                    str(request.radius),
                     "-sc",
                     "-gc",
                     str(request.clutter_height),
@@ -531,6 +532,14 @@ class Splat:
                         f"SPLAT! execution failed with return code {splat_result.returncode}\n"
                         f"Stdout: {splat_result.stdout}\nStderr: {splat_result.stderr}"
                     )
+
+                # save all files from tmpdir to /var/app/geoserver_data
+                for filename in os.listdir(tmpdir):
+                    src_path = os.path.join(tmpdir, filename)
+                    dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
+                    with open(src_path, "rb") as src_file:
+                        with open(dst_path, "wb") as dst_file:
+                            dst_file.write(src_file.read())
 
                 with open(os.path.join(tmpdir, "output.ppm"), "rb") as ppm_file:
                     with open(os.path.join(tmpdir, "output.kml"), "rb") as kml_file:
@@ -988,7 +997,7 @@ if __name__ == "__main__":
             rx_height=1.0,
             rx_gain=0.0,
             rx_loss=0.0,
-            radius=50000.0,
+            radius=50.0,
             colormap="CMRmap",
             min_dbm=-130.0,
             max_dbm=-80.0,

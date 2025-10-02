@@ -2,8 +2,8 @@
 	<div>
 		<div class="grid grid-cols-7 gap-2 mt-3 items-end">
 			<div class="col-span-5">
-				<DropDown title="Simulations" :options="simulationsOptions" @update:selected="changeCurrentSimulation"
-					:deleteBtn="true" @delete:option="removeSimulation" />
+				<DropDown title="Simulations" :options="simulationsOptions" :selected="simulationOption"
+					@update:selected="changeCurrentSimulation" :deleteBtn="true" @delete:option="removeSimulation" />
 			</div>
 			<div class="col-span-2">
 				<Button text="Add new" @click="addSimulation()" class="w-full" />
@@ -18,8 +18,8 @@
 			<ModeDataAccordian title="Transmitter options" :markerColor="simulation.id"
 				v-model:showSection="showSections.transmitter">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Latitude" v-model:value="simulation.lat" />
-					<InputNumber title="Longtitude" v-model:value="simulation.lon" />
+					<InputNumber title="Latitude" :min="-90" :max="90" v-model:value="simulation.lat" />
+					<InputNumber title="Longtitude" :min="-180" :max="180" v-model:value="simulation.lon" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<Button :text="pickingLocation ? 'Cancel picking' : 'Pick location on map'" @click="addLocationListener"
@@ -27,23 +27,23 @@
 					<Button text="Fly to coordinates" @click="flyToCurrentMarker" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Power (dBm)" v-model:value="simulation.tx_power" />
-					<InputNumber title="Frequency (mHz)" v-model:value="simulation.frequency_mhz" />
+					<InputNumber title="Power (dBm)" :min="1" v-model:value="simulation.tx_power" />
+					<InputNumber title="Frequency (mHz)" :min="20" :max="30000" v-model:value="simulation.frequency_mhz" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Height (m)" v-model:value="simulation.tx_height" />
-					<InputNumber title="Gain (dBi)" v-model:value="simulation.tx_gain" />
-					<InputNumber title="Loss (dB)" v-model:value="simulation.tx_loss" />
+					<InputNumber title="Height (m)" :min="1" v-model:value="simulation.tx_height" />
+					<InputNumber title="Gain (dBi)" :min="0" v-model:value="simulation.tx_gain" />
+					<InputNumber title="Loss (dB)" :min="0" v-model:value="simulation.tx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Sensitivity (dBm)" v-model:value="simulation.signal_threshold" />
-					<InputNumber title="Gain (dBi)" v-model:value="simulation.rx_gain" />
+					<InputNumber title="Sensitivity (dBm)" :max="0" v-model:value="simulation.signal_threshold" />
+					<InputNumber title="Gain (dBi)" :min="0" v-model:value="simulation.rx_gain" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Height (m)" v-model:value="simulation.rx_height" />
-					<InputNumber title="Loss (dB)" v-model:value="simulation.rx_loss" />
+					<InputNumber title="Height (m)" :min="1" v-model:value="simulation.rx_height" />
+					<InputNumber title="Loss (dB)" :min="0" v-model:value="simulation.rx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
@@ -52,21 +52,22 @@
 					<DropDown title="Polarization" :options="polarizationOptions" v-model:value="simulation.polarization" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Clutter height (m)" v-model:value="simulation.clutter_height" />
-					<InputNumber title="Ground dielectric (V/m)" v-model:value="simulation.ground_dielectric" />
+					<InputNumber title="Clutter height (m)" :min="0" v-model:value="simulation.clutter_height" />
+					<InputNumber title="Ground dielectric (V/m)" :min="1" v-model:value="simulation.ground_dielectric" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Ground conductivity (S/m)" v-model:value="simulation.ground_conductivity" />
-					<InputNumber title="Atmospheric bending (N)" v-model:value="simulation.atmosphere_bending" />
+					<InputNumber title="Ground conductivity (S/m)" :min="0" v-model:value="simulation.ground_conductivity" />
+					<InputNumber title="Atmospheric bending (N)" :min="0" v-model:value="simulation.atmosphere_bending" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Simulation options" v-model:showSection="showSections.simulationsOptions">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
-					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
+					<InputNumber title="Situation fraction (%)" :min="1" :max="100"
+						v-model:value="simulation.situation_fraction" />
+					<InputNumber title="Time fraction (%)" :min="1" :max="100" v-model:value="simulation.time_fraction" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
-					<InputNumber title="Max range (km)" v-model:value="simulation.radius" />
+					<InputNumber title="Max range (km)" :min="1" :max="300" v-model:value="simulation.radius" />
 					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
 				</div>
 			</ModeDataAccordian>
@@ -120,11 +121,11 @@ const showSections = ref({
 	simulationsOptions: false,
 });
 
-const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
+const defaultSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 	() => {
 		return {
 			id: randomHexColor(),
-			title: `Simulation ${store.coverSimModeData.simulations.length}`,
+			title: `Simulation ${store.coverSimModeData.simulations.length + 1}`,
 			opacity: 0.7,
 			lat: 45.85473269336,
 			lon: 13.72616645611,
@@ -155,8 +156,15 @@ const defautltSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 );
 
 if (store.coverSimModeData.simulations.length === 0) {
-	store.coverSimModeData.simulations.push(defautltSimulationValues.value);
+	store.coverSimModeData.simulations.push(defaultSimulationValues.value);
 }
+
+const simulationOption = computed(() => {
+	return {
+		id: simulation.value.id,
+		title: simulation.value.title,
+	};
+});
 
 const simulationsOptions = computed(() => {
 	return store.coverSimModeData.simulations.map((simulation) => ({
@@ -209,7 +217,7 @@ async function runSimulation() {
 		const predictRes = await store.fetchCoverageSimulation({
 			...simulation.value,
 			tx_power: simulation.value.tx_power,
-			radius: simulation.value.radius * 1000,
+			radius: simulation.value.radius,
 			colormap: "plasma",
 			min_dbm: simulation.value.signal_threshold,
 			max_dbm: -80,
@@ -321,8 +329,10 @@ function flyToCurrentMarker() {
 }
 
 function addSimulation() {
-	store.coverSimModeData.simulations.push(defautltSimulationValues.value);
-	simulation.value = store.coverSimModeData.simulations[store.coverSimModeData.simulations.length - 1];
+	store.coverSimModeData.simulations.push(defaultSimulationValues.value);
+	setTimeout(() => {
+		simulation.value = store.coverSimModeData.simulations[store.coverSimModeData.simulations.length - 1];
+	}, 1)
 }
 
 function changeCurrentSimulation(sim: { id: string; title: string }) {
@@ -343,16 +353,6 @@ function changeCurrentSimulation(sim: { id: string; title: string }) {
 function removeSimulation(id: string) {
 	if (!map.isLoaded || !map.map) return;
 
-	if (store.coverSimModeData.simulations.length === 1) {
-		notificationStore.addNotification({
-			type: "error",
-			message: "You need at least one simulation.",
-			title: "Coverage Simulation",
-			hideAfter: 5000,
-		});
-		return;
-	}
-
 	const index = store.coverSimModeData.simulations.findIndex((sim) => sim.id === id);
 	if (index !== -1) {
 		if (store.coverSimModeData.simulations[index].wmsUrl) {
@@ -360,6 +360,11 @@ function removeSimulation(id: string) {
 			store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
 		}
 		store.coverSimModeData.simulations.splice(index, 1);
+	}
+
+	if (store.coverSimModeData.simulations.length === 0) {
+		store.coverSimModeData.simulations.push(defaultSimulationValues.value);
+		simulation.value = store.coverSimModeData.simulations[0];
 	}
 
 	try {

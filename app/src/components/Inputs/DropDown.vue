@@ -45,7 +45,7 @@ import { type Ref, computed, ref, watch } from "vue";
 export type DropDownProps = {
   title?: string;
   options: Array<{ id?: number | string; title: string }>;
-  selected?: { id: number; title: string };
+  selected?: { id: number | string; title: string };
   deleteBtn?: boolean;
   btnOptions?: {
     labelColor?: string;

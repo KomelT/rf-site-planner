@@ -59,10 +59,11 @@ async def predict_los(
 def run_coverage(task_id: str, request: CoveragePredictionRequest):
     try:
         logger.info(f"Starting SPLAT! coverage prediction for task {task_id}.")
-        geotiff_data = splat_service.coverage_prediction(request)
+        data = splat_service.coverage_prediction(request)
 
-        store_tiff_in_geoserver(task_id, geotiff_data)
+        store_tiff_in_geoserver(task_id, data["geotiff"])
 
+        redis_client.setex(f"{task_id}:data", 3600, data["data"])
         redis_client.setex(f"{task_id}:status", 3600, "completed")
         logger.info(f"Task {task_id} marked as completed.")
     except Exception as e:

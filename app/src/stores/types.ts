@@ -24,7 +24,6 @@ export type LosSimulatorPayload = {
 	rx_height: number;
 	rx_gain: number;
 	rx_loss: number;
-	signal_threshold: number;
 	clutter_height: number;
 	ground_dielectric: number;
 	ground_conductivity: number;
@@ -80,7 +79,6 @@ export type CoverageSimulatorPayload = {
 	rx_height: number;
 	rx_gain: number;
 	rx_loss: number;
-	signal_threshold: number;
 	clutter_height: number;
 	ground_dielectric: number;
 	ground_conductivity: number;
@@ -120,7 +118,6 @@ export const polarizationOptions = ref([
 
 export type CenterNodeSimulatorPayload = {
 	frequency_mhz: number;
-	signal_threshold: number;
 	clutter_height: number;
 	ground_dielectric: number;
 	ground_conductivity: number;
@@ -157,7 +154,6 @@ export type CenterNodeSimulatorSite = CenterNodeSimulatorPayload & {
 
 export type AreaCenterNodeSimulatorPayload = {
 	frequency_mhz: number;
-	signal_threshold: number;
 	clutter_height: number;
 	ground_dielectric: number;
 	ground_conductivity: number;

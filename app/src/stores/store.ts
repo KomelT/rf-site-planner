@@ -18,6 +18,10 @@ const useStore = defineStore("store", {
 			mapStyle: ref("openstreetmap"),
 			coverSimModeData: ref({
 				simulations: [] as CoverageSimulatorSite[],
+				legend: ref({
+					show: false,
+					data: "" as string,
+				})
 			}),
 			losSimModeData: ref({
 				simulations: [] as LosSimulatorSite[],

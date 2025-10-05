@@ -141,7 +141,6 @@ const defaultSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 		rx_height: 15,
 		rx_gain: 6.5,
 		rx_loss: 2,
-		signal_threshold: -153,
 		radio_climate: "continental_temperate",
 		polarization: "vertical",
 		clutter_height: 0.9,

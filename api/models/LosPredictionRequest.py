@@ -38,9 +38,6 @@ class LosPredictionRequest(BaseModel):
     )
     rx_gain: float = Field(1, ge=0, description="Receiver antenna gain in dB (>= 0)")
     rx_loss: float = Field(0, ge=0, description="Receiver system loss in dB (>= 0)")
-    signal_threshold: float = Field(
-        -100, le=0, description="Signal cutoff in dBm (<= 0)"
-    )
     clutter_height: float = Field(
         0, ge=0, description="Ground clutter height in meters (>= 0)"
     )

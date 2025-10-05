@@ -34,9 +34,6 @@ class CoveragePredictionRequest(BaseModel):
     rx_loss: Optional[float] = Field(
         0.0, ge=0, description="RX loss in dB (default: 0.0)"
     )
-    signal_threshold: float = Field(
-        -100, le=0, description="Signal cutoff in dBm (<= 0)"
-    )
     clutter_height: float = Field(
         0, ge=0, description="Ground clutter height in meters (>= 0)"
     )

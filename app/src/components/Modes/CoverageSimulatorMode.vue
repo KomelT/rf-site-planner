@@ -38,8 +38,8 @@
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Receiver options" v-model:showSection="showSections.receiver">
 				<div class="flex flex-row gap-2">
-					<InputNumber title="Sensitivity (dBm)" :max="0" v-model:value="simulation.signal_threshold" />
-					<InputNumber title="Gain (dBi)" :min="0" v-model:value="simulation.rx_gain" />
+					<InputNumber title="Max Sensitivity (dBm)" :max="0" v-model:value="simulation.max_dbm" />
+					<InputNumber title="Min Sensitivity (dBm)" :max="0" v-model:value="simulation.min_dbm" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" :min="1" v-model:value="simulation.rx_height" />
@@ -137,7 +137,6 @@ const defaultSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			rx_gain: 5,
 			rx_height: 2,
 			rx_loss: 2,
-			signal_threshold: -153,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
 			clutter_height: 0.9,
@@ -216,11 +215,6 @@ async function runSimulation() {
 	try {
 		const predictRes = await store.fetchCoverageSimulation({
 			...simulation.value,
-			tx_power: simulation.value.tx_power,
-			radius: simulation.value.radius,
-			colormap: "plasma",
-			min_dbm: simulation.value.signal_threshold,
-			max_dbm: -80,
 		});
 
 		if (!predictRes.ok)
@@ -229,7 +223,12 @@ async function runSimulation() {
 		const predictData = await predictRes.json();
 		const taskId = predictData.task_id;
 
-		await store.fetchSimulationStatus(taskId, 1000);
+		const data = JSON.parse((await store.fetchSimulationStatus(taskId, 1000)).data);
+
+		console.log("Simulation data:", data);
+
+		store.coverSimModeData.legend.data = data.legend;
+		store.coverSimModeData.legend.show = true;
 
 		notificationStore.addNotification({
 			type: "success",
@@ -415,6 +414,8 @@ onBeforeUnmount(() => {
 
 	locationPickerSubscription.value?.unsubscribe();
 	locationPickerSubscription.value = null;
+
+	store.coverSimModeData.legend.show = false;
 
 	try {
 		map.map?.removeLayer(`coverage-${simulation.value.id}`);

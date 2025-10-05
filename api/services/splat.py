@@ -1,3 +1,4 @@
+import base64
 import io
 import logging
 import math
@@ -136,8 +137,28 @@ class Splat:
                             situation_fraction=request.situation_fraction,
                             time_fraction=request.time_fraction,
                             tx_power=request.tx_power,
-                            tx_gain=request.tx_gain,
+                            tx_gain=0.0,
                             tx_loss=request.tx_loss,
+                        )
+                    )
+
+                # write antenna azimuth pattern / az file
+                with open(os.path.join(tmpdir, "tx.az"), "wb") as az_file:
+                    az_file.write(
+                        Splat._create_splat_az_omni(
+                            gain_dbi=request.tx_gain, rotation_deg=0.0
+                        )
+                    )
+
+                # write antenna elevation pattern / el file
+                with open(os.path.join(tmpdir, "tx.el"), "wb") as el_file:
+                    el_file.write(
+                        Splat._create_splat_el_omni(
+                            tilt_deg=0.0,
+                            tilt_direction_az_deg=0.0,
+                            angle_min_deg=-10.0,
+                            angle_max_deg=90.0,
+                            step_deg=1.0,
                         )
                     )
 
@@ -155,25 +176,23 @@ class Splat:
                     # str(request.rx_height),
                     "-gc",
                     str(request.clutter_height),
-                    "-db",
-                    str(request.signal_threshold),
                     "-d",
                     self.tile_cache,
                     "-f",
                     f"{request.frequency_mhz}M",
-                    "-p",
-                    "terrain_profile_graph.png",
-                    "-e",
-                    "terrain_elevation_graph.png",
-                    "-h",
-                    "terrain_height_graph.png",
+                    # "-p",
+                    # "terrain_profile_graph.png",
+                    # "-e",
+                    # "terrain_elevation_graph.png",
+                    # "-h",
+                    # "terrain_height_graph.png",
                     "-H",
                     "normalized_terrain_height_graph.png",
-                    "-l",
-                    "path_loss_graph.png",
-                    "-o",
-                    "topo_map.ppm",
-                    "-kml",
+                    # "-l",
+                    # "path_loss_graph.png",
+                    # "-o",
+                    # "topo_map.ppm",
+                    # "-kml",
                     "-gpsav",
                     "-metric",
                     "-olditm",
@@ -202,13 +221,7 @@ class Splat:
 
                 logger.info("SPLAT! coverage prediction completed successfully.")
 
-                # save all files from tmpdir to /var/app/geoserver_data
-                for filename in os.listdir(tmpdir):
-                    src_path = os.path.join(tmpdir, filename)
-                    dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
-                    with open(src_path, "rb") as src_file:
-                        with open(dst_path, "wb") as dst_file:
-                            dst_file.write(src_file.read())
+                self._save_all_files_from_tmpdir(tmpdir)
 
                 with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
                     with open(
@@ -507,7 +520,7 @@ class Splat:
                     "output.ppm",
                     "-dbm",
                     "-db",
-                    str(request.signal_threshold),
+                    str(request.min_dbm),
                     "-kml",
                     "-olditm",
                 ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
@@ -533,13 +546,14 @@ class Splat:
                         f"Stdout: {splat_result.stdout}\nStderr: {splat_result.stderr}"
                     )
 
-                # save all files from tmpdir to /var/app/geoserver_data
-                for filename in os.listdir(tmpdir):
-                    src_path = os.path.join(tmpdir, filename)
-                    dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
-                    with open(src_path, "rb") as src_file:
-                        with open(dst_path, "wb") as dst_file:
-                            dst_file.write(src_file.read())
+                self._save_all_files_from_tmpdir(tmpdir)
+
+                with open(os.path.join(tmpdir, "output-ck.ppm"), "rb") as label_file:
+                    legend_data = label_file.read()
+                    legend_png = Image.open(io.BytesIO(legend_data))
+                    buffered = io.BytesIO()
+                    legend_png.save(buffered, format="PNG")
+                    legend_html_blob = base64.b64encode(buffered.getvalue()).decode("utf-8")
 
                 with open(os.path.join(tmpdir, "output.ppm"), "rb") as ppm_file:
                     with open(os.path.join(tmpdir, "output.kml"), "rb") as kml_file:
@@ -554,11 +568,29 @@ class Splat:
                         )
 
                 logger.info("SPLAT! coverage prediction completed successfully.")
-                return geotiff_data
+                return {
+                    "geotiff": geotiff_data,
+                    "data": dumps({"legend": legend_html_blob}),
+                }
 
             except Exception as e:
                 logger.error(f"Error during coverage prediction: {e}")
                 raise RuntimeError(f"Error during coverage prediction: {e}")
+
+    @staticmethod
+    def _save_all_files_from_tmpdir(tmpdir: str):
+        # first empty the target directory
+        for filename in os.listdir("/var/app/geoserver_data/tmp"):
+            dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
+            os.remove(dst_path)
+
+        # then copy all files from tmpdir to the target directory
+        for filename in os.listdir(tmpdir):
+            src_path = os.path.join(tmpdir, filename)
+            dst_path = os.path.join("/var/app/geoserver_data/tmp", filename)
+            with open(src_path, "rb") as src_file:
+                with open(dst_path, "wb") as dst_file:
+                    dst_file.write(src_file.read())
 
     @staticmethod
     def _dir_content(dir: str) -> List[str]:
@@ -812,6 +844,62 @@ class Splat:
             raise ValueError(f"Failed to generate .dcf content: {e}")
 
     @staticmethod
+    def _create_splat_az_omni(
+        gain_dbi: float = 0.0,  # kept for API symmetry; not encoded in .az
+        rotation_deg: float = 0.0,  # CW from True North
+    ) -> bytes:
+        """
+        Create a normalized SPLAT! .az file for an omnidirectional antenna.
+        Pattern is flat (1.000 for az=0..359). 'gain_dbi' is NOT encoded here.
+        """
+        logger.debug(
+            "Generating omni .az (normalized; gain_dbi=%.2f, rotation=%.1f°)",
+            gain_dbi,
+            rotation_deg,
+        )
+        try:
+            lines = [f"{float(rotation_deg):.1f}"]
+            lines += [f"{az} 1.000" for az in range(360)]
+            contents = "\n".join(lines) + "\n"
+            return contents.encode("utf-8")
+        except Exception as e:
+            logger.error(f"Error generating omni .az content: {e}")
+            raise ValueError(f"Failed to generate .az content: {e}")
+
+    @staticmethod
+    def _create_splat_el_omni(
+        tilt_deg: float = 0.0,
+        tilt_direction_az_deg: float = 0.0,
+        angle_min_deg: float = -10.0,
+        angle_max_deg: float = 90.0,
+        step_deg: float = 1.0,
+    ) -> bytes:
+        """
+        Create a normalized SPLAT! .el file for an omnidirectional antenna in elevation.
+        Field is flat (1.000) across elevation angles. 'gain_dbi' is NOT encoded here.
+        """
+        logger.debug(
+            "Generating omni .el (normalized; tilt=%.1f°, dir=%.1f°)",
+            tilt_deg,
+            tilt_direction_az_deg,
+        )
+        try:
+            if step_deg <= 0:
+                raise ValueError("step_deg must be > 0.")
+
+            # Build the angle grid (inclusive)
+            count = int(round((angle_max_deg - angle_min_deg) / step_deg)) + 1
+            angles = [angle_min_deg + i * step_deg for i in range(count)]
+
+            lines = [f"{float(tilt_deg):.1f} {float(tilt_direction_az_deg):.1f}"]
+            lines += [f"{a:.1f} 1.000" for a in angles]
+            contents = "\n".join(lines) + "\n"
+            return contents.encode("utf-8")
+        except Exception as e:
+            logger.error(f"Error generating omni .el content: {e}")
+            raise ValueError(f"Failed to generate .el content: {e}")
+
+    @staticmethod
     def create_splat_colorbar(
         colormap_name: str,
         min_dbm: float,
@@ -1001,7 +1089,6 @@ if __name__ == "__main__":
             colormap="CMRmap",
             min_dbm=-130.0,
             max_dbm=-80.0,
-            signal_threshold=-130.0,
             high_resolution=False,
         )
 

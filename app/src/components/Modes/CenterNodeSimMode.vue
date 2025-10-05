@@ -176,7 +176,6 @@ const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 				},
 			],
 			tx_loss: 2,
-			signal_threshold: -130,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
 			clutter_height: 0.9,
@@ -466,7 +465,6 @@ async function runSimulation() {
 						polarization: simulation.value.polarization,
 						situation_fraction: simulation.value.situation_fraction,
 						time_fraction: simulation.value.time_fraction,
-						signal_threshold: simulation.value.signal_threshold,
 						tx_loss: simulation.value.tx_loss,
 						high_resolution: simulation.value.high_resolution,
 					});

@@ -5,6 +5,7 @@
 		<LayerSelectorControl position="top-right" />
 		<LosChart position="top-right" />
 		<CentralNodeTable position="top-right" />
+		<CoverageLegend position="bottom-right" />
 		<MglGeoJsonSource source-id="geojson" :data="geojson as GeoJSON.GeoJSON">
 			<MglLineLayer layer-id="geojson" :layout="layout" :paint="paint" />
 		</MglGeoJsonSource>
@@ -24,6 +25,7 @@ import { useStore } from "../stores/store";
 import CentralNodeTable from "./Map/CentralNodeTable.vue";
 import LayerSelectorControl from "./Map/LayerSelectorControl.vue";
 import LosChart from "./Map/LosChart.vue";
+import CoverageLegend from "./Map/CoverageLegend.vue";
 
 const store = useStore();
 

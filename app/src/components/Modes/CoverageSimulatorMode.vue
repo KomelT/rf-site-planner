@@ -225,8 +225,6 @@ async function runSimulation() {
 
 		const data = JSON.parse((await store.fetchSimulationStatus(taskId, 1000)).data);
 
-		console.log("Simulation data:", data);
-
 		store.coverSimModeData.legend.data = data.legend;
 		store.coverSimModeData.legend.show = true;
 
@@ -241,10 +239,7 @@ async function runSimulation() {
 
 		if (simulation.value.wmsUrl) {
 			const url = new URL(simulation.value.wmsUrl);
-			const res = await store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
-			res.ok
-				? console.log("Previous simulation deleted successfully.")
-				: console.error("Failed to delete previous simulation.");
+			await store.deleteCoverageSimulation(url.searchParams.get("layers")?.split(":")[1] || "");
 		}
 
 		if (map.map.getSource(`coverage-${simulation.value.id}`)) {

@@ -137,28 +137,8 @@ class Splat:
                             situation_fraction=request.situation_fraction,
                             time_fraction=request.time_fraction,
                             tx_power=request.tx_power,
-                            tx_gain=0.0,
+                            tx_gain=request.tx_gain,
                             tx_loss=request.tx_loss,
-                        )
-                    )
-
-                # write antenna azimuth pattern / az file
-                with open(os.path.join(tmpdir, "tx.az"), "wb") as az_file:
-                    az_file.write(
-                        Splat._create_splat_az_omni(
-                            gain_dbi=request.tx_gain, rotation_deg=0.0
-                        )
-                    )
-
-                # write antenna elevation pattern / el file
-                with open(os.path.join(tmpdir, "tx.el"), "wb") as el_file:
-                    el_file.write(
-                        Splat._create_splat_el_omni(
-                            tilt_deg=0.0,
-                            tilt_direction_az_deg=0.0,
-                            angle_min_deg=-10.0,
-                            angle_max_deg=90.0,
-                            step_deg=1.0,
                         )
                     )
 
@@ -484,6 +464,26 @@ class Splat:
                         )
                     )
 
+                # write antenna azimuth pattern / az file
+                with open(os.path.join(tmpdir, "tx.az"), "wb") as az_file:
+                    az_file.write(
+                        Splat._create_splat_az_omni(
+                            gain_dbi=request.tx_gain, rotation_deg=0.0
+                        )
+                    )
+
+                # write antenna elevation pattern / el file
+                with open(os.path.join(tmpdir, "tx.el"), "wb") as el_file:
+                    el_file.write(
+                        Splat._create_splat_el_omni(
+                            tilt_deg=0.0,
+                            tilt_direction_az_deg=0.0,
+                            angle_min_deg=-10.0,
+                            angle_max_deg=90.0,
+                            step_deg=1.0,
+                        )
+                    )
+
                 # write colorbar / dcf file
                 with open(os.path.join(tmpdir, "splat.dcf"), "wb") as dcf_file:
                     dcf_file.write(
@@ -553,7 +553,9 @@ class Splat:
                     legend_png = Image.open(io.BytesIO(legend_data))
                     buffered = io.BytesIO()
                     legend_png.save(buffered, format="PNG")
-                    legend_html_blob = base64.b64encode(buffered.getvalue()).decode("utf-8")
+                    legend_html_blob = base64.b64encode(buffered.getvalue()).decode(
+                        "utf-8"
+                    )
 
                 with open(os.path.join(tmpdir, "output.ppm"), "rb") as ppm_file:
                     with open(os.path.join(tmpdir, "output.kml"), "rb") as kml_file:
@@ -711,12 +713,6 @@ class Splat:
                 ew = "E" if lon_tile >= 0 else "W"
                 tile_name = f"{ns}{abs(lat_tile):02d}{ew}{abs(lon_tile):03d}.hgt.gz"
 
-                # .sdf file boundaries
-                lat_start = lat_tile
-                lon_start = lon_tile
-                lat_end = lat_start + 1
-                lon_end = lon_start + 1
-
                 # Generate .sdf file names
                 sdf_filename = Splat._hgt_filename_to_sdf_filename(
                     tile_name, high_resolution=False
@@ -842,62 +838,6 @@ class Splat:
         except Exception as e:
             logger.error(f"Error generating .dcf file content: {e}")
             raise ValueError(f"Failed to generate .dcf content: {e}")
-
-    @staticmethod
-    def _create_splat_az_omni(
-        gain_dbi: float = 0.0,  # kept for API symmetry; not encoded in .az
-        rotation_deg: float = 0.0,  # CW from True North
-    ) -> bytes:
-        """
-        Create a normalized SPLAT! .az file for an omnidirectional antenna.
-        Pattern is flat (1.000 for az=0..359). 'gain_dbi' is NOT encoded here.
-        """
-        logger.debug(
-            "Generating omni .az (normalized; gain_dbi=%.2f, rotation=%.1f°)",
-            gain_dbi,
-            rotation_deg,
-        )
-        try:
-            lines = [f"{float(rotation_deg):.1f}"]
-            lines += [f"{az} 1.000" for az in range(360)]
-            contents = "\n".join(lines) + "\n"
-            return contents.encode("utf-8")
-        except Exception as e:
-            logger.error(f"Error generating omni .az content: {e}")
-            raise ValueError(f"Failed to generate .az content: {e}")
-
-    @staticmethod
-    def _create_splat_el_omni(
-        tilt_deg: float = 0.0,
-        tilt_direction_az_deg: float = 0.0,
-        angle_min_deg: float = -10.0,
-        angle_max_deg: float = 90.0,
-        step_deg: float = 1.0,
-    ) -> bytes:
-        """
-        Create a normalized SPLAT! .el file for an omnidirectional antenna in elevation.
-        Field is flat (1.000) across elevation angles. 'gain_dbi' is NOT encoded here.
-        """
-        logger.debug(
-            "Generating omni .el (normalized; tilt=%.1f°, dir=%.1f°)",
-            tilt_deg,
-            tilt_direction_az_deg,
-        )
-        try:
-            if step_deg <= 0:
-                raise ValueError("step_deg must be > 0.")
-
-            # Build the angle grid (inclusive)
-            count = int(round((angle_max_deg - angle_min_deg) / step_deg)) + 1
-            angles = [angle_min_deg + i * step_deg for i in range(count)]
-
-            lines = [f"{float(tilt_deg):.1f} {float(tilt_direction_az_deg):.1f}"]
-            lines += [f"{a:.1f} 1.000" for a in angles]
-            contents = "\n".join(lines) + "\n"
-            return contents.encode("utf-8")
-        except Exception as e:
-            logger.error(f"Error generating omni .el content: {e}")
-            raise ValueError(f"Failed to generate .el content: {e}")
 
     @staticmethod
     def create_splat_colorbar(

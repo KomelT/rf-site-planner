@@ -28,7 +28,7 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Power (dBm)" :min="1" v-model:value="simulation.tx_power" />
-					<InputNumber title="Frequency (mHz)" :min="20" :max="30000" v-model:value="simulation.frequency_mhz" />
+					<InputNumber title="Frequency (MHz)" :min="20" :max="30000" v-model:value="simulation.frequency_mhz" />
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" :min="1" v-model:value="simulation.tx_height" />

@@ -3,7 +3,6 @@ services:
     build:
       context: app
       dockerfile: dockerfile.dev
-    restart: unless-stopped
     volumes:
       - ./app:/var/app
     env_file:
@@ -17,7 +16,6 @@ services:
     build:
       context: api
       dockerfile: dockerfile.dev
-    restart: unless-stopped
     volumes:
       - ./api:/var/app
       - ./geoserver.d/data:/var/app/geoserver_data
@@ -32,14 +30,12 @@ services:
   redis:
     image: redis:latest
     container_name: redis
-    restart: unless-stopped
     ports:
       - 6379:6379
 
   geoserver:
     image: docker.osgeo.org/geoserver:2.27.x
     container_name: geoserver
-    restart: unless-stopped
     volumes:
       - ./geoserver.d/data:/opt/geoserver_data/data
       - ./geoserver.d/workspaces/RF-SITE-PLANNER:/opt/geoserver_data/workspaces/RF-SITE-PLANNER

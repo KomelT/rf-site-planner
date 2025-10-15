@@ -464,26 +464,6 @@ class Splat:
                         )
                     )
 
-                # write antenna azimuth pattern / az file
-                with open(os.path.join(tmpdir, "tx.az"), "wb") as az_file:
-                    az_file.write(
-                        Splat._create_splat_az_omni(
-                            gain_dbi=request.tx_gain, rotation_deg=0.0
-                        )
-                    )
-
-                # write antenna elevation pattern / el file
-                with open(os.path.join(tmpdir, "tx.el"), "wb") as el_file:
-                    el_file.write(
-                        Splat._create_splat_el_omni(
-                            tilt_deg=0.0,
-                            tilt_direction_az_deg=0.0,
-                            angle_min_deg=-10.0,
-                            angle_max_deg=90.0,
-                            step_deg=1.0,
-                        )
-                    )
-
                 # write colorbar / dcf file
                 with open(os.path.join(tmpdir, "splat.dcf"), "wb") as dcf_file:
                     dcf_file.write(

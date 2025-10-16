@@ -39,9 +39,9 @@ class Splat:
         self.splat_binary = os.path.join(splat_path, "splat")  # core SPLAT! program
 
         self.splat_hd_binary = os.path.join(
-            splat_path, "splat-hd"
+            splat_path, "splat"
         )  # used instead of the splat binary when using the 1-arcsecond / 30 meter resolution terrain data.
-
+        """
         self.srtm2sdf_binary = os.path.join(
             splat_path, "srtm2sdf"
         )  # convert 3-arcsecond resolution srtm .hgt terrain tiles to SPLAT! .sdf terrain tiles.
@@ -49,6 +49,7 @@ class Splat:
         self.srtm2sdf_hd_binary = os.path.join(
             splat_path, "srtm2sdf-hd"
         )  # used instead of srtm2sdf when using the 1-arcsecond / 30 meter resolution terrain data.
+        """
 
         # Check the SPLAT! binaries exist and are executable
         if not os.path.isfile(self.splat_binary) or not os.access(
@@ -58,13 +59,14 @@ class Splat:
                 f"'splat' binary not found or not executable at '{self.splat_binary}'"
             )
 
+        
         if not os.path.isfile(self.splat_hd_binary) or not os.access(
             self.splat_hd_binary, os.X_OK
         ):
             raise FileNotFoundError(
                 f"'splat-hd' binary not found or not executable at '{self.splat_hd_binary}'"
             )
-
+        """
         if not os.path.isfile(self.srtm2sdf_binary) or not os.access(
             self.srtm2sdf_binary, os.X_OK
         ):
@@ -77,6 +79,7 @@ class Splat:
             raise FileNotFoundError(
                 f"'srtm2sdf_hd_binary' binary not found or not executable at '{self.srtm2sdf_hd_binary}'"
             )
+        """
 
         self.tile_cache = os.path.join(os.getcwd(), cache_dir)
         os.makedirs(self.tile_cache, exist_ok=True)
@@ -144,7 +147,7 @@ class Splat:
 
                 splat_command = [
                     (
-                        self.splat_hd_binary
+                        f"{self.splat_hd_binary} -hd"
                         if request.high_resolution
                         else self.splat_binary
                     ),
@@ -502,6 +505,7 @@ class Splat:
                     "-db",
                     str(request.min_dbm),
                     "-kml",
+                    "-ppm",
                     "-olditm",
                 ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
@@ -933,13 +937,13 @@ class Splat:
             # Check cache first
             if high_resolution:
                 # HD mode -> require sdf_hd_name
-                if sdf_hd_name in self._dir_content(self.tile_cache):
+                if sdf_name.replace(":", "_") in self._dir_content(self.tile_cache):
                     logger.info(f"Cache hit (HD): {tile_name} found in tile cache.")
                     continue
                 url = f"{self.terrain_base_url}/1-arc/{sdf_hd_name}"
             else:
                 # Normal mode -> require sdf_name
-                if sdf_name in self._dir_content(self.tile_cache):
+                if sdf_name.replace(":", "_") in self._dir_content(self.tile_cache):
                     logger.info(f"Cache hit: {tile_name} found in tile cache.")
                     continue
                 url = f"{self.terrain_base_url}/3-arc/{sdf_name}"
@@ -960,7 +964,7 @@ class Splat:
             with open(
                 os.path.join(
                     self.tile_cache,
-                    sdf_hd_name if high_resolution else sdf_name,
+                    sdf_name.replace(":", "_") if high_resolution else sdf_name.replace(":", "_"),
                 ),
                 "wb",
             ) as sdf_file:

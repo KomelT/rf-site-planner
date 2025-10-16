@@ -1,0 +1,31 @@
+FROM python:3.13
+
+WORKDIR /var/app
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        cmake \
+        libbz2-dev \
+        zlib1g-dev \
+        libjpeg-dev \
+        libpng-dev \
+        libgdal-dev \
+        gnuplot \
+        git \
+        groff \
+        bsdmainutils \
+        ghostscript && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/hoche/splat.git
+
+RUN mkdir -p splat/build && \
+    cd splat/build && \
+    cmake .. && \
+    make && \
+    make install
+
+RUN mkdir -p /var/app/splat-work
+
+RUN ln -s /usr/local/bin/splat /usr/bin/splat && \
+    ln -s /usr/local/bin/splat-hd /usr/bin/splat-hd

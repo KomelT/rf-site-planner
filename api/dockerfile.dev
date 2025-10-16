@@ -1,4 +1,4 @@
-FROM komelt/splat-python:latest
+FROM splat-hoche:latest
 
 WORKDIR /var/app
 

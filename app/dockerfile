@@ -6,4 +6,4 @@ COPY . .
 
 RUN yarn install --frozen-lockfile
 
-CMD ["npm", "run", "build" ]
+CMD ["yarn", "run", "build" ]

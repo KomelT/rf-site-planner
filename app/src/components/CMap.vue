@@ -33,9 +33,12 @@ const mapStyle = computed(() => {
 	return `/map-styles/${store.mapStyle}.json`;
 });
 
-const layout = {
-	'line-join': 'round',
-	'line-cap': 'round'
+const layout: {
+	"line-join": DataDrivenPropertyValueSpecification<"round" | "miter" | "bevel"> | undefined,
+	"line-cap": PropertyValueSpecification<"round" | "butt" | "square"> | undefined
+} = {
+	'line-join': "round",
+	'line-cap': "round"
 };
 
 const paint = {
@@ -44,6 +47,7 @@ const paint = {
 };
 
 import { watch } from "vue";
+import { DataDrivenPropertyValueSpecification, PropertyValueSpecification } from "maplibre-gl";
 
 const geojson = ref({
 	type: "FeatureCollection",

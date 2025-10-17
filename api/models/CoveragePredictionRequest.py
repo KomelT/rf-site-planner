@@ -30,10 +30,6 @@ class CoveragePredictionRequest(BaseModel):
     rx_height: float = Field(
         1, ge=1, description="Receiver height above ground in meters (>= 1 m)"
     )
-    rx_gain: float = Field(1, ge=0, description="Receiver antenna gain in dB (>= 0)")
-    rx_loss: Optional[float] = Field(
-        0.0, ge=0, description="RX loss in dB (default: 0.0)"
-    )
     clutter_height: float = Field(
         0, ge=0, description="Ground clutter height in meters (>= 0)"
     )

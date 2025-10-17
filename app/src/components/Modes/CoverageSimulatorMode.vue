@@ -43,7 +43,6 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Height (m)" :min="1" v-model:value="simulation.rx_height" />
-					<InputNumber title="Loss (dB)" :min="0" v-model:value="simulation.rx_loss" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Enviroment" v-model:showSection="showSections.enviroment">
@@ -134,9 +133,7 @@ const defaultSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			tx_height: 2,
 			tx_gain: 5,
 			tx_loss: 2,
-			rx_gain: 5,
 			rx_height: 2,
-			rx_loss: 2,
 			radio_climate: "continental_temperate",
 			polarization: "vertical",
 			clutter_height: 0.9,
@@ -148,7 +145,7 @@ const defaultSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			radius: 30,
 			high_resolution: false,
 			colormap: "plasma",
-			min_dbm: -153,
+			min_dbm: -133,
 			max_dbm: -80,
 		};
 	},

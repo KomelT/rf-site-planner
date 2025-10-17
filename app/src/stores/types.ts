@@ -77,8 +77,6 @@ export type CoverageSimulatorPayload = {
 	tx_loss: number;
 	frequency_mhz: number;
 	rx_height: number;
-	rx_gain: number;
-	rx_loss: number;
 	clutter_height: number;
 	ground_dielectric: number;
 	ground_conductivity: number;

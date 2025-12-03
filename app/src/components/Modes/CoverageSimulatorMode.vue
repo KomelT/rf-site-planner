@@ -400,6 +400,8 @@ onBeforeMount(() => {
 				"raster-opacity": sim.opacity,
 			},
 		});
+
+		store.coverSimModeData.legend.show = true;
 	});
 })
 

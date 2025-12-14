@@ -29,4 +29,5 @@ const store = useStore();
 
 store.loadFromLocalStorage();
 store.watchForChangesAndCommit();
+store.coverSimModeData.legend.show = false;
 </script>

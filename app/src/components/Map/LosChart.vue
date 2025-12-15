@@ -3,7 +3,7 @@
     <div :class="['bg-white border rounded shadow-lg', hide ? 'border-gray-100' : 'border-gray-300']">
       <Button v-if="hide" text="Show" @click="hide = false" class="px-2! m-2 w-auto! bg-orange-400!" />
       <div v-if="!hide">
-        <ApexCharts :width="isMobileDevice() ? '100%' : 400" height="250" type="line"
+        <ApexCharts :width="isMobileDevice() ? '100%' : '400'" height="250" type="line"
           :series="store.losSimModeData.chart.data" :options="store.losSimModeData.chart.options" />
         <div class="flex items-center justify-between bg-white p-2 border-t border-gray-300">
           <div class="text-black ml-1">
@@ -21,11 +21,14 @@
 <script setup lang="ts">
 import { MglCustomControl } from "@indoorequal/vue-maplibre-gl";
 import type { ControlPosition } from "maplibre-gl";
-import ApexCharts from "apexcharts";
+import VueApexCharts from "vue3-apexcharts";
 import { useStore } from "../../stores/store";
 import { isMobileDevice } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import { ref } from "vue";
+
+// vue3-apexcharts exposes the Vue component; the core apexcharts package is non-Vue and was causing runtime errors
+const ApexCharts = VueApexCharts;
 
 export type LayerSelectorProps = {
   position: ControlPosition | undefined;

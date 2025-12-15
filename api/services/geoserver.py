@@ -25,6 +25,7 @@ def store_tiff_in_geoserver(task_id: str, geotiff_data: bytes):
             ),
             headers={"Content-type": "text/plain"},
             data=f"/opt/geoserver_data/data/{task_id}.geotiff",
+            timeout=15,
         )
 
         if req.status_code != 201:
@@ -49,6 +50,7 @@ def remove_tiff_from_geoserver(task_id: str):
                 getenv("GEOSERVER_ADMIN_USER"),
                 getenv("GEOSERVER_ADMIN_PASSWORD"),
             ),
+            timeout=15,
         )
 
         os.remove(f"/var/app/geoserver_data/{task_id}.geotiff")

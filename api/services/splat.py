@@ -946,7 +946,16 @@ class Splat:
 
             # Download the tile
             logger.info(f"Downloading terrain tile from {url}.")
-            response = requests.get(url)
+            try:
+                response = requests.get(url, timeout=15)
+            except requests.RequestException as exc:
+                logger.error(
+                    f"Failed to download terrain tile (network error): {tile_name} from {url}: {exc}"
+                )
+                raise RuntimeError(
+                    f"Failed to download terrain tile: {tile_name} from {url}: {exc}"
+                ) from exc
+
             if response.status_code != 200:
                 logger.error(f"Failed to download terrain tile: {tile_name} from {url}")
                 raise RuntimeError(

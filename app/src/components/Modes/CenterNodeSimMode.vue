@@ -278,6 +278,23 @@ watch(
 			marker.setPopup(popup);
 			popup.addTo(map.map);
 		}
+
+		const lineSegments: [number, number][][] = [];
+		for (const transmitter of simulation.value.transmitter) {
+			for (const receiver of simulation.value.recivers) {
+				lineSegments.push([
+					[transmitter.lon, transmitter.lat],
+					[receiver.lon, receiver.lat],
+				]);
+			}
+		}
+
+		store.geoJsonLine.type = "MultiLineString";
+		store.geoJsonLine.coordinates.splice(
+			0,
+			store.geoJsonLine.coordinates.length,
+			...lineSegments,
+		);
 	},
 	{ immediate: true, deep: true },
 );
@@ -548,6 +565,9 @@ onBeforeUnmount(() => {
 	}
 
 	locationPickerSubscription.value?.unsubscribe();
+
+	store.geoJsonLine.type = "LineString";
+	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
 
 	store.centerNodeSimModeData.table.data.splice(0, store.centerNodeSimModeData.table.data.length);
 	store.centerNodeSimModeData.table.show = false;

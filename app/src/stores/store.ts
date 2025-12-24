@@ -48,7 +48,8 @@ const useStore = defineStore("store", {
 				}),
 			}),
 			geoJsonLine: ref({
-				coordinates: [] as [number, number][],
+				type: "LineString" as "LineString" | "MultiLineString",
+				coordinates: [] as [number, number][] | [number, number][][],
 			})
 		};
 	},

@@ -231,9 +231,8 @@ watch(
 			marker.remove();
 		}
 
-		// remove all coordinates from geoJsonLine
+		store.geoJsonLine.type = "LineString";
 		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
-
 		for (const point of newPolygon) {
 			store.geoJsonLine.coordinates.push([point[0], point[1]]);
 
@@ -518,6 +517,7 @@ onBeforeUnmount(() => {
 		marker.remove();
 	}
 
+	store.geoJsonLine.type = "LineString";
 	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
 
 	locationPickerSubscription.value?.unsubscribe();

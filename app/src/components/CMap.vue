@@ -107,7 +107,7 @@ const geojson = ref({
 			type: "Feature",
 			properties: {},
 			geometry: {
-				type: "LineString",
+				type: store.geoJsonLine.type,
 				coordinates: store.geoJsonLine.coordinates
 			}
 		}
@@ -116,8 +116,9 @@ const geojson = ref({
 
 // Keep GeoJSON layer in sync with store coordinates
 watch(
-	() => store.geoJsonLine.coordinates,
-	(newCoordinates) => {
+	() => [store.geoJsonLine.type, store.geoJsonLine.coordinates],
+	([newType, newCoordinates]) => {
+		geojson.value.features[0].geometry.type = newType;
 		geojson.value.features[0].geometry.coordinates = newCoordinates;
 		geojson.value = { ...geojson.value };
 	},

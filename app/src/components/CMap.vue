@@ -62,11 +62,21 @@ const mapStyle: Ref<StyleSpecification> = ref(
 
 );
 
+watch(() => map.isLoaded, (loaded) => {
+	if (!loaded) return;
+
+	setMapStyle(store.mapStyle);
+});
+
 watch(() => store.mapStyle, (newStyle) => {
+	setMapStyle(newStyle);
+}, { immediate: true });
+
+function setMapStyle(style: string) {
 	let tmpStyle = map.map?.getStyle();
 	if (!tmpStyle) return;
 
-	switch (newStyle) {
+	switch (style) {
 		case "openstreetmap":
 			tmpStyle.sources.basemap.tiles[0] = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
 			tmpStyle.sources.basemap.attribution = "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>";
@@ -85,7 +95,7 @@ watch(() => store.mapStyle, (newStyle) => {
 	}
 
 	map.map?.setStyle(tmpStyle);
-}, { immediate: true });
+}
 
 const layout: {
 	"line-join": DataDrivenPropertyValueSpecification<"round" | "miter" | "bevel"> | undefined,

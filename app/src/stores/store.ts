@@ -158,7 +158,8 @@ const useStore = defineStore("store", {
 		updateLocalStorage() {
 			localStorage.setItem("store", JSON.stringify({
 				coverSimModeData: this.coverSimModeData,
-				losSimModeData: this.losSimModeData
+				losSimModeData: this.losSimModeData,
+				mapStyle: this.mapStyle,
 			}));
 		},
 		loadFromLocalStorage() {
@@ -170,6 +171,7 @@ const useStore = defineStore("store", {
 					this.losSimModeData = parsedData.losSimModeData;
 					this.losSimModeData.chart.show = false;
 				}
+				if (parsedData.mapStyle) this.mapStyle = parsedData.mapStyle;
 
 			}
 		},
@@ -178,6 +180,9 @@ const useStore = defineStore("store", {
 				this.updateLocalStorage();
 			});
 			watch(this.losSimModeData, () => {
+				this.updateLocalStorage();
+			});
+			watch(() => this.mapStyle, () => {
 				this.updateLocalStorage();
 			});
 		},

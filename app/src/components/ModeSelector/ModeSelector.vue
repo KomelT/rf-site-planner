@@ -61,7 +61,7 @@ const modes = [
 	{
 		title: "Coverage simulator",
 		description: "Simulate coverage of a mesh network",
-		image: import("../../assets/coverage-simulator.jpg"),
+		image: import("../../assets/coverage-simulator.png"),
 		onClick: () => {
 			toggleSim("showCoverageSim");
 			selectedModeText.value = "Coverage simulator";
@@ -70,7 +70,7 @@ const modes = [
 	{
 		title: "Line Of Sight sim.",
 		description: "Simulate line of sight between two points",
-		image: import("../../assets/los-simulator.jpg"),
+		image: import("../../assets/los-simulator.png"),
 		onClick: () => {
 			toggleSim("showLosSim");
 			selectedModeText.value = "Line Of Sight simulator";

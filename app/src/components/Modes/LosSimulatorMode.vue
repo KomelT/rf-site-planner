@@ -86,6 +86,7 @@ import {
 	type ComputedRef,
 	type Ref,
 	computed,
+	onMounted,
 	onBeforeUnmount,
 	ref,
 	watch,
@@ -416,6 +417,49 @@ function flyToMarker(lon: number, lat: number) {
 	});
 }
 
+function flyToSimulationsExtent() {
+	if (!map.isLoaded || !map.map) return;
+
+	const sims = store.losSimModeData.simulations;
+	if (!sims.length) return;
+
+	let minLat = 90;
+	let maxLat = -90;
+	let minLon = 180;
+	let maxLon = -180;
+
+	for (const sim of sims) {
+		minLat = Math.min(minLat, sim.tx_lat, sim.rx_lat);
+		maxLat = Math.max(maxLat, sim.tx_lat, sim.rx_lat);
+		minLon = Math.min(minLon, sim.tx_lon, sim.rx_lon);
+		maxLon = Math.max(maxLon, sim.tx_lon, sim.rx_lon);
+	}
+
+	minLat = Math.max(-90, minLat);
+	maxLat = Math.min(90, maxLat);
+	minLon = Math.max(-180, minLon);
+	maxLon = Math.min(180, maxLon);
+
+	if (minLat === maxLat && minLon === maxLon) {
+		map.map.flyTo({
+			center: [minLon, minLat],
+			zoom: 15,
+		});
+		return;
+	}
+
+	map.map.fitBounds(
+		[
+			[minLon, minLat],
+			[maxLon, maxLat],
+		],
+		{
+			padding: 40,
+			maxZoom: 15,
+		},
+	);
+}
+
 function addSimulation() {
 	store.losSimModeData.simulations.push(defaultSimulationValues.value);
 	simulation.value = store.losSimModeData.simulations[store.losSimModeData.simulations.length - 1];
@@ -477,5 +521,9 @@ onBeforeUnmount(() => {
 
 	store.geoJsonLine.type = "LineString";
 	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
+});
+
+onMounted(() => {
+	flyToSimulationsExtent();
 });
 </script>

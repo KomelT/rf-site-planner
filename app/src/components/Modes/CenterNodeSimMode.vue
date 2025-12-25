@@ -101,6 +101,7 @@ import {
 	type ComputedRef,
 	type Ref,
 	computed,
+	onMounted,
 	onBeforeUnmount,
 	ref,
 	watch,
@@ -378,6 +379,57 @@ function flyToNode(lat: number, lon: number) {
 	});
 }
 
+function flyToSimulationsExtent() {
+	if (!map.isLoaded || !map.map) return;
+
+	const sims = simulations.value;
+	if (!sims.length) return;
+
+	let minLat = 90;
+	let maxLat = -90;
+	let minLon = 180;
+	let maxLon = -180;
+
+	for (const sim of sims) {
+		for (const transmitter of sim.transmitter) {
+			minLat = Math.min(minLat, transmitter.lat);
+			maxLat = Math.max(maxLat, transmitter.lat);
+			minLon = Math.min(minLon, transmitter.lon);
+			maxLon = Math.max(maxLon, transmitter.lon);
+		}
+		for (const receiver of sim.recivers) {
+			minLat = Math.min(minLat, receiver.lat);
+			maxLat = Math.max(maxLat, receiver.lat);
+			minLon = Math.min(minLon, receiver.lon);
+			maxLon = Math.max(maxLon, receiver.lon);
+		}
+	}
+
+	minLat = Math.max(-90, minLat);
+	maxLat = Math.min(90, maxLat);
+	minLon = Math.max(-180, minLon);
+	maxLon = Math.min(180, maxLon);
+
+	if (minLat === maxLat && minLon === maxLon) {
+		map.map.flyTo({
+			center: [minLon, minLat],
+			zoom: 15,
+		});
+		return;
+	}
+
+	map.map.fitBounds(
+		[
+			[minLon, minLat],
+			[maxLon, maxLat],
+		],
+		{
+			padding: 40,
+			maxZoom: 15,
+		},
+	);
+}
+
 function changeCurrentTransmitter(transmitter: { id: string; title: string }) {
 	const transmitterIndex = simulation.value.transmitter.findIndex(
 		(sim) => sim.id === transmitter.id,
@@ -558,6 +610,10 @@ async function runSimulation() {
 		isSimulationRunning.value = false;
 	}
 }
+
+onMounted(() => {
+	flyToSimulationsExtent();
+});
 
 onBeforeUnmount(() => {
 	for (const marker of markers.value) {

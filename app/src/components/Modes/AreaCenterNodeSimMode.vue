@@ -79,6 +79,7 @@ import {
 	type ComputedRef,
 	type Ref,
 	computed,
+	onMounted,
 	onBeforeUnmount,
 	ref,
 	watch,
@@ -350,6 +351,60 @@ function flyToNode(lat: number, lon: number) {
 	});
 }
 
+function flyToSimulationsExtent() {
+	if (!map.isLoaded || !map.map) return;
+
+	const points: [number, number][] = [];
+
+	for (const sim of simulations.value) {
+		for (const receiver of sim.recivers) {
+			points.push([receiver.lon, receiver.lat]);
+		}
+	}
+
+	for (const point of areaPolygon.value) {
+		points.push(point);
+	}
+
+	if (!points.length) return;
+
+	let minLat = 90;
+	let maxLat = -90;
+	let minLon = 180;
+	let maxLon = -180;
+
+	for (const [lon, lat] of points) {
+		minLat = Math.min(minLat, lat);
+		maxLat = Math.max(maxLat, lat);
+		minLon = Math.min(minLon, lon);
+		maxLon = Math.max(maxLon, lon);
+	}
+
+	minLat = Math.max(-90, minLat);
+	maxLat = Math.min(90, maxLat);
+	minLon = Math.max(-180, minLon);
+	maxLon = Math.min(180, maxLon);
+
+	if (minLat === maxLat && minLon === maxLon) {
+		map.map.flyTo({
+			center: [minLon, minLat],
+			zoom: 15,
+		});
+		return;
+	}
+
+	map.map.fitBounds(
+		[
+			[minLon, minLat],
+			[maxLon, maxLat],
+		],
+		{
+			padding: 40,
+			maxZoom: 15,
+		},
+	);
+}
+
 function changeCurrentReceiver(receiver: { id: string; title: string }) {
 	const receiverIndex = simulation.value.recivers.findIndex(
 		(sim) => sim.id === receiver.id,
@@ -507,6 +562,10 @@ async function runSimulation() {
 		);
 	});
 }
+
+onMounted(() => {
+	flyToSimulationsExtent();
+});
 
 onBeforeUnmount(() => {
 	for (const marker of markers.value) {

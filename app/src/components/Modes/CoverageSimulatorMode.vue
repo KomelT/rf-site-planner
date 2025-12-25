@@ -85,6 +85,7 @@ import {
 	type ComputedRef,
 	type Ref,
 	computed,
+	onMounted,
 	onBeforeUnmount,
 	ref,
 	watch,
@@ -322,6 +323,58 @@ function flyToCurrentMarker() {
 	});
 }
 
+function flyToSimulationsExtent() {
+	if (!map.isLoaded || !map.map) return;
+
+	const sims = store.coverSimModeData.simulations;
+	if (!sims.length) return;
+
+	let minLat = 90;
+	let maxLat = -90;
+	let minLon = 180;
+	let maxLon = -180;
+
+	for (const sim of sims) {
+		const radiusKm = Math.max(0, sim.radius ?? 0);
+		const lat = sim.lat;
+		const lon = sim.lon;
+		const latRad = (lat * Math.PI) / 180;
+		const kmPerDegLat = 110.574;
+		const kmPerDegLon = Math.max(0.0001, 111.320 * Math.cos(latRad));
+		const deltaLat = radiusKm / kmPerDegLat;
+		const deltaLon = radiusKm / kmPerDegLon;
+
+		minLat = Math.min(minLat, lat - deltaLat);
+		maxLat = Math.max(maxLat, lat + deltaLat);
+		minLon = Math.min(minLon, lon - deltaLon);
+		maxLon = Math.max(maxLon, lon + deltaLon);
+	}
+
+	minLat = Math.max(-90, minLat);
+	maxLat = Math.min(90, maxLat);
+	minLon = Math.max(-180, minLon);
+	maxLon = Math.min(180, maxLon);
+
+	if (minLat === maxLat && minLon === maxLon) {
+		map.map.flyTo({
+			center: [minLon, minLat],
+			zoom: 15,
+		});
+		return;
+	}
+
+	map.map.fitBounds(
+		[
+			[minLon, minLat],
+			[maxLon, maxLat],
+		],
+		{
+			padding: 40,
+			maxZoom: 15,
+		},
+	);
+}
+
 function addSimulation() {
 	store.coverSimModeData.simulations.push(defaultSimulationValues.value);
 	setTimeout(() => {
@@ -403,7 +456,11 @@ onBeforeMount(() => {
 
 		store.coverSimModeData.legend.show = true;
 	});
-})
+});
+
+onMounted(() => {
+	flyToSimulationsExtent();
+});
 
 // remove all uneded stuff before umount
 onBeforeUnmount(() => {

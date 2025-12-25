@@ -1,12 +1,11 @@
 <template>
   <Listbox as="div" v-model="selected">
-    <ListboxLabel v-if="props.title" :class="['block text-sm/6 font-medium', props.btnOptions?.labelColor ?? 'text-gray-200']">{{ props.title }}</ListboxLabel>
-    <div class="relative mt-0.5">
+    <ListboxLabel v-if="props.title" :class="['block! text-sm/6 font-medium', props.btnOptions?.labelColor ?? 'text-gray-200']">{{ props.title }}</ListboxLabel>
+    <div class="relative! mt-0.5">
       <ListboxButton
-        class="grid w-full cursor-default grid-cols-1 rounded-md bg-white py-1.5 pl-3 pr-2 text-left text-gray-900 outline -outline-offset-1 outline-gray-300 focus:outline focus:-outline-offset-2 focus:outline-indigo-600 sm:text-sm/6">
-        <span class="col-start-1 row-start-1 truncate pr-6">{{ selected.title }}</span>
-        <ChevronUpDownIcon class="col-start-1 row-start-1 size-5 self-center justify-self-end text-gray-500 sm:size-4"
-          aria-hidden="true" />
+        class="inline-flex! w-full! min-w-36! cursor-default! items-center! justify-between! gap-2! rounded-md bg-white! py-1.5! pl-3! pr-2! text-left text-gray-900! outline! -outline-offset-1! outline-gray-300! focus:outline! focus:-outline-offset-2! focus:outline-indigo-600! sm:text-sm/6">
+        <span class="truncate">{{ selected.title }}</span>
+        <ChevronUpDownIcon class="size-5 shrink-0 text-gray-500 sm:size-4" aria-hidden="true" />
       </ListboxButton>
 
       <transition leave-active-class="transition ease-in duration-100" leave-from-class="opacity-100"

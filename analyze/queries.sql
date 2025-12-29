@@ -1,3 +1,26 @@
+-- Get all mesh packets betwen specific times heard directly by a gateway
+SELECT
+	mp.id,
+	mp."createdAt"
+FROM public.mesh_packet mp
+JOIN public.mesh_data md
+	ON md."id" = mp."meshDataId"
+JOIN public.service_envelope se
+	ON se."meshPacketId" = mp."id"
+JOIN public.position p
+	ON md."payloadId" = p."id"
+WHERE
+	mp."hopLimit" = mp."hopStart"
+	AND mp."createdAt" >= TIMESTAMP '2025-12-29 20:00:00'
+	AND mp."createdAt" <  TIMESTAMP '2025-12-29 22:40:00'
+	AND mp."rxRssi" != 0
+	AND mp."from" = '1122137108'
+	AND se."gatewayId" = '!75f19024'
+	AND md."portNum" = 3
+ORDER BY mp."createdAt" DESC
+
+
+-- Get the latest RSSI per gateway for the relevant meshDataIds
 WITH relevant AS (
   SELECT
     mp."meshDataId",
@@ -13,13 +36,13 @@ WITH relevant AS (
     ON md."payloadId" = p."id"
   WHERE
     mp."hopLimit" = mp."hopStart"
-    AND mp."createdAt" >= TIMESTAMP '2025-12-28 15:04:00'
-    AND mp."createdAt" <  TIMESTAMP '2025-12-28 15:46:00'
-    AND mp."rxRssi" = 0
+    AND mp."createdAt" >= TIMESTAMP '2025-12-29 20:00:00'
+    AND mp."createdAt" <  TIMESTAMP '2025-12-29 22:40:00'
+    AND mp."rxRssi" != 0
     AND mp."from" = '1122137108'
-    AND se."gatewayId" = '!42e27414'
+    AND se."gatewayId" = '!75f19024'
     AND md."portNum" = 3
-  GROUP BY mp."meshDataId"
+  ORDER BY mp."createdAt" DESC
 ),
 latest_per_gateway AS (
   SELECT DISTINCT ON (mp."meshDataId", se."gatewayId")

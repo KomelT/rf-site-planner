@@ -152,8 +152,8 @@ class Splat:
                     "tx.qth",
                     "-r",
                     "rx.qth",
-                    # "-c",
-                    # str(request.rx_height),
+                    #"-L",
+                    #str(request.rx_height),
                     "-gc",
                     str(request.clutter_height),
                     "-d",
@@ -382,6 +382,13 @@ class Splat:
                                                     .strip()
                                                     .decode("utf-8")
                                                 )
+                                            if b"ITWOM Version 3.0 path loss:" in line:
+                                                longley_rice_loss_line = (
+                                                    line.strip()
+                                                    .split(b" ")[5]
+                                                    .strip()
+                                                    .decode("utf-8")
+                                                )
 
                                         return dumps(
                                             {
@@ -407,7 +414,8 @@ class Splat:
                                                 - request.rx_loss,
                                                 "path_loss": float(path_loss_line),
                                                 "longley_rice_loss": float(
-                                                    longley_rice_loss_line
+                                                    (request.tx_power + (request.tx_gain - 2.15) - request.tx_loss) - float(longley_rice_loss_line) + request.rx_gain - request.rx_loss
+
                                                 ),
                                             }
                                         )

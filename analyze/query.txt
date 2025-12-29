@@ -1,0 +1,58 @@
+WITH relevant AS (
+  SELECT
+    mp."meshDataId",
+    MIN(mp."createdAt") AS "createdAt",
+    MIN(p."latitudeI")  AS "latitudeI",
+    MIN(p."longitudeI") AS "longitudeI"
+  FROM public.mesh_packet mp
+  JOIN public.mesh_data md
+    ON md."id" = mp."meshDataId"
+  JOIN public.service_envelope se
+    ON se."meshPacketId" = mp."id"
+  JOIN public.position p
+    ON md."payloadId" = p."id"
+  WHERE
+    mp."hopLimit" = mp."hopStart"
+    AND mp."createdAt" >= TIMESTAMP '2025-12-28 15:04:00'
+    AND mp."createdAt" <  TIMESTAMP '2025-12-28 15:46:00'
+    AND mp."rxRssi" = 0
+    AND mp."from" = '1122137108'
+    AND se."gatewayId" = '!42e27414'
+    AND md."portNum" = 3
+  GROUP BY mp."meshDataId"
+),
+latest_per_gateway AS (
+  SELECT DISTINCT ON (mp."meshDataId", se."gatewayId")
+    mp."meshDataId",
+    se."gatewayId",
+    mp."rxRssi"
+  FROM public.mesh_packet mp
+  JOIN public.service_envelope se
+    ON se."meshPacketId" = mp."id"
+  WHERE
+    mp."meshDataId" IN (SELECT "meshDataId" FROM relevant)
+    AND mp."from" = '1122137108'
+    AND se."gatewayId" IN ('!7369fb6a', '!75f19024', '!da5ad56c')
+    AND mp."rxRssi" <> 0
+  ORDER BY
+    mp."meshDataId",
+    se."gatewayId",
+    mp."createdAt" DESC
+)
+SELECT
+  r."meshDataId",
+  MAX(l."rxRssi") FILTER (WHERE l."gatewayId" = '!7369fb6a') AS "!7369fb6a",
+  MAX(l."rxRssi") FILTER (WHERE l."gatewayId" = '!75f19024') AS "!75f19024",
+  MAX(l."rxRssi") FILTER (WHERE l."gatewayId" = '!da5ad56c') AS "!da5ad56c",
+  r."latitudeI",
+  r."longitudeI",
+  r."createdAt"
+FROM relevant r
+LEFT JOIN latest_per_gateway l
+  ON l."meshDataId" = r."meshDataId"
+GROUP BY
+  r."meshDataId",
+  r."latitudeI",
+  r."longitudeI",
+  r."createdAt"
+ORDER BY r."createdAt" ASC;

@@ -5,6 +5,7 @@ import json
 import sys
 import time
 import math
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
@@ -77,7 +78,7 @@ DEFAULTS = {
 @dataclass
 class ApiConfig:
     base_url: str
-    poll_interval: float = 0.1
+    poll_interval: float = 1
     poll_timeout: float = 600.0
     request_timeout: float = 30.0
 
@@ -98,22 +99,23 @@ def poll_task(api: ApiConfig, task_id: str) -> Dict[str, Any]:
     deadline = time.monotonic() + api.poll_timeout
     while time.monotonic() < deadline:
         status = http_json(f"{api.base_url}/task/{task_id}", None, api.request_timeout)
-        if status.get("status") == "completed":
+        st = status.get("status")
+        if st == "completed":
             return status
-        if status.get("status") == "failed":
+        if st == "failed":
             raise RuntimeError(status.get("error", "Task failed"))
         time.sleep(api.poll_interval)
     raise TimeoutError(f"Task {task_id} timed out after {api.poll_timeout}s")
 
 
-def parse_optional_float(value: Optional[str]) -> Optional[float]:
+def parse_optional_float(value: Any) -> Optional[float]:
     if value is None:
         return None
-    stripped = value.strip().strip('"').strip("'")
-    if stripped == "":
+    s = str(value).strip().strip('"').strip("'")
+    if s == "":
         return None
     try:
-        return float(stripped)
+        return float(s)
     except ValueError:
         return None
 
@@ -130,6 +132,27 @@ def normalize_bool(value: Any) -> Optional[bool]:
         if lowered in {"false", "no", "0"}:
             return False
     return None
+
+
+def new_site_stats() -> Dict[str, Any]:
+    return {
+        "completed": 0,
+        "failed": 0,
+        "skipped_no_rssi": 0,
+        "diff_values": [],
+        "x": [],
+        "rssi": [],
+        "pred": [],
+        "diff": [],
+        "los_fresnel_clear_x": [],
+        "los_fresnel_clear_diff": [],
+        "fresnel_60_obstructed_x": [],
+        "fresnel_60_obstructed_diff": [],
+        "first_fresnel_obstructed_x": [],
+        "first_fresnel_obstructed_diff": [],
+        "los_obstructed_x": [],
+        "los_obstructed_diff": [],
+    }
 
 
 def build_payload(
@@ -154,6 +177,35 @@ def build_payload(
         }
     )
     return payload
+
+
+def run_los_request(
+    api: ApiConfig, payload: Dict[str, Any]
+) -> Dict[str, Optional[Any]]:
+    try:
+        submit = http_json(f"{api.base_url}/los", payload, api.request_timeout)
+        task_id = submit["task_id"]
+        status = poll_task(api, task_id)
+        if "data" in status and status["data"]:
+            data = json.loads(status["data"])
+            return {
+                "ok": True,
+                "pred": data.get("rx_signal_power"),
+                "path_obstructed": normalize_bool(
+                    data.get("path", {}).get("obstructed")
+                ),
+                "fresnel_obstructed": normalize_bool(
+                    data.get("first_fresnel", {}).get("obstructed")
+                ),
+                "fresnel_60_obstructed": normalize_bool(
+                    data.get("freshnel_60", data.get("fresnel_60", {})).get(
+                        "obstructed"
+                    )
+                ),
+            }
+        return {"ok": True, "pred": None}
+    except Exception as exc:
+        return {"ok": False, "error": str(exc)}
 
 
 def resolve_csv_path(input_path: str) -> Path:
@@ -193,7 +245,19 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Skip API calls and rebuild stats/plots from analyze.csv",
     )
+    p.add_argument(
+        "--parallel",
+        "-p",
+        type=int,
+        default=6,
+        help="Number of parallel LOS requests (0 = sequential)",
+    )
     return p.parse_args()
+
+
+def _scatter_if(ax, xs, ys, **kwargs):
+    if xs and ys and len(xs) == len(ys):
+        ax.scatter(xs, ys, **kwargs)
 
 
 def save_series_plot(
@@ -215,46 +279,64 @@ def save_series_plot(
 ):
     if not x:
         return
-    plt.figure()
-    plt.plot(x, y)
-    if green_x and green_y:
-        plt.scatter(
-            green_x, green_y, color="green", s=16, zorder=3, label="No obstructions"
-        )
-    if red_x and red_y:
-        plt.scatter(
-            red_x, red_y, color="red", s=16, zorder=3, label="Fresnel 60 obstructed"
-        )
-    if orange_x and orange_y:
-        plt.scatter(
-            orange_x,
-            orange_y,
-            color="orange",
-            s=16,
-            zorder=3,
-            label="First Fresnel obstructed",
-        )
-    if yellow_x and yellow_y:
-        plt.scatter(
-            yellow_x,
-            yellow_y,
-            color="yellow",
-            s=16,
-            zorder=3,
-            label="LOS obstructed",
-        )
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    if (
-        (green_x and green_y)
-        or (red_x and red_y)
-        or (orange_x and orange_y)
-        or (yellow_x and yellow_y)
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y)
+
+    _scatter_if(
+        ax,
+        green_x or [],
+        green_y or [],
+        color="green",
+        s=16,
+        zorder=3,
+        label="No obstructions",
+    )
+    _scatter_if(
+        ax,
+        red_x or [],
+        red_y or [],
+        color="red",
+        s=16,
+        zorder=3,
+        label="LOS obstructed",
+    )
+    _scatter_if(
+        ax,
+        orange_x or [],
+        orange_y or [],
+        color="orange",
+        s=16,
+        zorder=3,
+        label="Fresnel 60 obstructed",
+    )
+    _scatter_if(
+        ax,
+        yellow_x or [],
+        yellow_y or [],
+        color="yellow",
+        s=16,
+        zorder=3,
+        label="First Fresnel obstructed",
+    )
+
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+
+    if any(
+        [
+            (green_x and green_y),
+            (red_x and red_y),
+            (orange_x and orange_y),
+            (yellow_x and yellow_y),
+        ]
     ):
-        plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_png, dpi=150)
+        ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
     print(f"Wrote plot: {out_png}", file=stderr)
 
 
@@ -263,35 +345,35 @@ def save_two_series_plot(
 ):
     if not x:
         return
-    plt.figure()
-    plt.plot(x, y1, label=label1)
-    plt.plot(x, y2, label=label2)
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_png, dpi=150)
+
+    fig, ax = plt.subplots()
+    ax.plot(x, y1, label=label1)
+    ax.plot(x, y2, label=label2)
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
     print(f"Wrote plot: {out_png}", file=stderr)
 
 
 def save_multi_series_plot(series, title, xlabel, ylabel, out_png, stderr=sys.stderr):
-    """
-    series: list of dicts: {"x": [...], "y": [...], "label": "..."}
-    """
-    # Draw only if at least one series has data
     if not any(s.get("x") for s in series):
         return
-    plt.figure()
+
+    fig, ax = plt.subplots()
     for s in series:
         if s.get("x"):
-            plt.plot(s["x"], s["y"], label=s["label"])
-    plt.title(title)
-    plt.xlabel(xlabel)
-    plt.ylabel(ylabel)
-    plt.legend()
-    plt.tight_layout()
-    plt.savefig(out_png, dpi=150)
+            ax.plot(s["x"], s["y"], label=s["label"])
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.legend()
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
     print(f"Wrote plot: {out_png}", file=stderr)
 
 
@@ -313,7 +395,7 @@ def main() -> int:
 
     rows_with_coords = 0
     detected_sites = []
-    per_site = {}
+    per_site: Dict[str, Dict[str, Any]] = {}
 
     csv_path = resolve_csv_path(args.input_path)
     output_dir = csv_path.parent
@@ -321,6 +403,9 @@ def main() -> int:
     output_csv_path = output_dir / "analyze.csv"
     output_txt_path = output_dir / "analyze.txt"
 
+    # -----------------------------------------------------------------------
+    # no-prediction: rebuild plots/stats from analyze.csv
+    # -----------------------------------------------------------------------
     if args.no_prediction:
         if not output_csv_path.exists():
             print(f"Missing analyze.csv at {output_csv_path}", file=sys.stderr)
@@ -332,11 +417,13 @@ def main() -> int:
                 print("Input analyze.csv has no header row.", file=sys.stderr)
                 return 1
             header = list(reader.fieldnames)
-            detected_sites = [
-                s for s in RX_SITES if f"{s['rssi_field']}_mesaured_rssi" in header
-            ]
             rows = list(reader)
 
+        detected_sites = [
+            s for s in RX_SITES if f"{s['rssi_field']}_mesaured_rssi" in header
+        ]
+
+        # ensure obstruction columns exist
         for s in detected_sites:
             f = s["rssi_field"]
             for col in (
@@ -347,28 +434,11 @@ def main() -> int:
                 if col not in header:
                     header.append(col)
 
+        # remove legacy diff columns if present
         header = [col for col in header if not col.endswith("_rssi_diff")]
 
         for s in detected_sites:
-            f = s["rssi_field"]
-            per_site[f] = {
-                "completed": 0,
-                "failed": 0,
-                "skipped_no_rssi": 0,
-                "diff_values": [],
-                "x": [],
-                "rssi": [],
-                "pred": [],
-                "diff": [],
-                "los_fresnel_clear_x": [],
-                "los_fresnel_clear_diff": [],
-                "fresnel_60_obstructed_x": [],
-                "fresnel_60_obstructed_diff": [],
-                "first_fresnel_obstructed_x": [],
-                "first_fresnel_obstructed_diff": [],
-                "los_obstructed_x": [],
-                "los_obstructed_diff": [],
-            }
+            per_site[s["rssi_field"]] = new_site_stats()
 
         with open(output_csv_path, "w", newline="", encoding="utf-8") as out_csv:
             writer = csv.writer(out_csv)
@@ -379,60 +449,64 @@ def main() -> int:
                 csv_lon = parse_optional_float(row.get("lon"))
                 if csv_lat is None or csv_lon is None:
                     continue
-                rows_with_coords += 1
 
+                rows_with_coords += 1
                 row_id = parse_optional_float(row.get("row"))
                 x_val = int(row_id) if row_id is not None else idx
 
                 for s in detected_sites:
                     f = s["rssi_field"]
-                    rssi_field = f"{f}_mesaured_rssi"
-                    pred_field = f"{f}_predicted_rssi"
-                    los_field = f"{f}_los_obstructed"
-                    first_fresnel_field = f"{f}_first_fresnel_obstructed"
-                    fresnel_60_field = f"{f}_fresnel_60_obstructed"
+                    st = per_site[f]
 
-                    rssi = parse_optional_float(row.get(rssi_field))
-                    pred = parse_optional_float(row.get(pred_field))
-                    diff = None
+                    rssi = parse_optional_float(row.get(f"{f}_mesaured_rssi"))
+                    pred = parse_optional_float(row.get(f"{f}_predicted_rssi"))
 
                     if rssi is None:
-                        per_site[f]["skipped_no_rssi"] += 1
-                    if pred is not None and rssi is not None:
-                        diff = pred - rssi
+                        st["skipped_no_rssi"] += 1
+                        continue
 
-                    if pred is not None and rssi is not None and diff is not None:
-                        per_site[f]["completed"] += 1
-                        per_site[f]["diff_values"].append(diff)
-                        per_site[f]["x"].append(x_val)
-                        per_site[f]["rssi"].append(rssi)
-                        per_site[f]["pred"].append(pred)
-                        per_site[f]["diff"].append(diff)
+                    if pred is None:
+                        continue
 
-                        los_obstructed = normalize_bool(row.get(los_field))
-                        first_fresnel_obstructed = normalize_bool(
-                            row.get(first_fresnel_field)
-                        )
-                        fresnel_60_obstructed = normalize_bool(row.get(fresnel_60_field))
+                    diff = pred - rssi
 
-                        if fresnel_60_obstructed is True:
-                            per_site[f]["fresnel_60_obstructed_x"].append(x_val)
-                            per_site[f]["fresnel_60_obstructed_diff"].append(diff)
-                        elif first_fresnel_obstructed is True:
-                            per_site[f]["first_fresnel_obstructed_x"].append(x_val)
-                            per_site[f]["first_fresnel_obstructed_diff"].append(diff)
-                        elif los_obstructed is True:
-                            per_site[f]["los_obstructed_x"].append(x_val)
-                            per_site[f]["los_obstructed_diff"].append(diff)
-                        elif (
-                            los_obstructed is False
-                            and first_fresnel_obstructed is False
-                            and fresnel_60_obstructed is False
-                        ):
-                            per_site[f]["los_fresnel_clear_x"].append(x_val)
-                            per_site[f]["los_fresnel_clear_diff"].append(diff)
+                    st["completed"] += 1
+                    st["diff_values"].append(diff)
+                    st["x"].append(x_val)
+                    st["rssi"].append(rssi)
+                    st["pred"].append(pred)
+                    st["diff"].append(diff)
+
+                    los_obstructed = normalize_bool(row.get(f"{f}_los_obstructed"))
+                    first_fresnel_obstructed = normalize_bool(
+                        row.get(f"{f}_first_fresnel_obstructed")
+                    )
+                    fresnel_60_obstructed = normalize_bool(
+                        row.get(f"{f}_fresnel_60_obstructed")
+                    )
+
+                    if los_obstructed is True:
+                        st["los_obstructed_x"].append(x_val)
+                        st["los_obstructed_diff"].append(diff)
+                    elif fresnel_60_obstructed is True:
+                        st["fresnel_60_obstructed_x"].append(x_val)
+                        st["fresnel_60_obstructed_diff"].append(diff)
+                    elif first_fresnel_obstructed is True:
+                        st["first_fresnel_obstructed_x"].append(x_val)
+                        st["first_fresnel_obstructed_diff"].append(diff)
+                    elif (
+                        los_obstructed is False
+                        and first_fresnel_obstructed is False
+                        and fresnel_60_obstructed is False
+                    ):
+                        st["los_fresnel_clear_x"].append(x_val)
+                        st["los_fresnel_clear_diff"].append(diff)
 
                 writer.writerow([row.get(col) for col in header])
+
+    # -----------------------------------------------------------------------
+    # prediction mode: read raw csv and call API (unless geojson-only)
+    # -----------------------------------------------------------------------
     else:
         with (
             open(csv_path, newline="", encoding="utf-8") as fh,
@@ -440,6 +514,7 @@ def main() -> int:
         ):
             reader = csv.DictReader(fh)
             writer = csv.writer(out_csv)
+
             if not reader.fieldnames:
                 print("Input file has no header row.", file=sys.stderr)
                 return 1
@@ -455,7 +530,6 @@ def main() -> int:
                 s for s in RX_SITES if s["rssi_field"] in reader.fieldnames
             ]
 
-            # Output CSV header (only detected RX sites)
             header = ["row", "lat", "lon"]
             for s in detected_sites:
                 f = s["rssi_field"]
@@ -463,44 +537,21 @@ def main() -> int:
                     f"{f}_mesaured_rssi",
                     f"{f}_predicted_rssi",
                     f"{f}_los_obstructed",
-                    f"{f}_first_fresnel_obstructed",
                     f"{f}_fresnel_60_obstructed",
+                    f"{f}_first_fresnel_obstructed",
                 ]
             writer.writerow(header)
 
-            # Per-site buffers
             for s in detected_sites:
-                f = s["rssi_field"]
-                per_site[f] = {
-                    "completed": 0,
-                    "failed": 0,
-                    "skipped_no_rssi": 0,
-                    "diff_values": [],
-                    "x": [],
-                    "rssi": [],
-                    "pred": [],
-                    "diff": [],
-                    "los_fresnel_clear_x": [],
-                    "los_fresnel_clear_diff": [],
-                    "fresnel_60_obstructed_x": [],
-                    "fresnel_60_obstructed_diff": [],
-                    "first_fresnel_obstructed_x": [],
-                    "first_fresnel_obstructed_diff": [],
-                    "los_obstructed_x": [],
-                    "los_obstructed_diff": [],
-                }
+                per_site[s["rssi_field"]] = new_site_stats()
 
             total_requests = 0
             if not args.geojson_only:
                 with open(csv_path, newline="", encoding="utf-8") as count_fh:
                     count_reader = csv.DictReader(count_fh)
                     for row in count_reader:
-                        lat_val = (
-                            (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
-                        )
-                        lon_val = (
-                            (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
-                        )
+                        lat_val = (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
+                        lon_val = (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
                         if not lat_val or not lon_val:
                             continue
                         if lat_val == LAT_FIELD or lon_val == LON_FIELD:
@@ -514,130 +565,137 @@ def main() -> int:
                             f = s["rssi_field"]
                             if parse_optional_float(row.get(f)) is not None:
                                 total_requests += 1
-
+    
             completed_requests = 0
             start_time = time.monotonic()
-
-            for idx, row in enumerate(reader, start=1):
-                lat_val = (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
-                lon_val = (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
-
-                if not lat_val or not lon_val:
-                    continue
-                if lat_val == LAT_FIELD or lon_val == LON_FIELD:
-                    continue
-
-                try:
-                    raw_lat = float(lat_val)
-                    raw_lon = float(lon_val)
-                except ValueError:
-                    continue
-
-                csv_lat = raw_lat / COORD_SCALE
-                csv_lon = raw_lon / COORD_SCALE
-                rows_with_coords += 1
-
-                out_row = [idx, csv_lat, csv_lon]
-                for s in detected_sites:
-                    f = s["rssi_field"]
-                    rssi = parse_optional_float(row.get(f))
-                    pred = None
-                    diff = None
-                    path_obstructed = None
-                    fresnel_obstructed = None
-                    fresnel_60_obstructed = None
-                    los_obstructed_val = None
-                    first_fresnel_val = None
-                    fresnel_60_val = None
-
-                    if args.geojson_only:
-                        out_row += [rssi, None, None, None, None]
+            last_progress_t = start_time
+    
+            if args.parallel and args.parallel > 0 and not args.geojson_only:
+                rows = []
+                for idx, row in enumerate(reader, start=1):
+                    lat_val = (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
+                    lon_val = (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
+    
+                    if not lat_val or not lon_val:
                         continue
-
-                    if rssi is None:
-                        per_site[f]["skipped_no_rssi"] += 1
-                        out_row += [None, None, None, None, None]
+                    if lat_val == LAT_FIELD or lon_val == LON_FIELD:
                         continue
-
-                    payload = build_payload(
-                        tx_lat=csv_lat,
-                        tx_lon=csv_lon,
-                        rx_lat=float(s["lat"]),
-                        rx_lon=float(s["lon"]),
-                        rx_height=float(s["rx_height"]),
-                        rx_gain=float(s["rx_gain"]),
-                        rx_loss=float(s["rx_loss"]),
-                    )
-
+    
                     try:
-                        submit = http_json(
-                            f"{api.base_url}/los", payload, api.request_timeout
-                        )
-                        task_id = submit["task_id"]
-                        status = poll_task(api, task_id)
-                        per_site[f]["completed"] += 1
-
-                        if "data" in status and status["data"]:
-                            data = json.loads(status["data"])
-                            pred = data.get("rx_signal_power")
-                            path_obstructed = normalize_bool(
-                                data.get("path", {}).get("obstructed")
+                        raw_lat = float(lat_val)
+                        raw_lon = float(lon_val)
+                    except ValueError:
+                        continue
+    
+                    csv_lat = raw_lat / COORD_SCALE
+                    csv_lon = raw_lon / COORD_SCALE
+                    rows_with_coords += 1
+    
+                    rssi_by_site = {}
+                    for s in detected_sites:
+                        f = s["rssi_field"]
+                        rssi = parse_optional_float(row.get(f))
+                        rssi_by_site[f] = rssi
+                        if rssi is None:
+                            st = per_site[f]
+                            st["skipped_no_rssi"] += 1
+    
+                    rows.append({
+                        "idx": idx,
+                        "csv_lat": csv_lat,
+                        "csv_lon": csv_lon,
+                        "rssi_by_site": rssi_by_site,
+                        "results": {},
+                    })
+    
+                futures = {}
+                with ThreadPoolExecutor(max_workers=args.parallel) as executor:
+                    for row in rows:
+                        for s in detected_sites:
+                            f = s["rssi_field"]
+                            rssi = row["rssi_by_site"].get(f)
+                            if rssi is None:
+                                continue
+                            payload = build_payload(
+                                tx_lat=row["csv_lat"],
+                                tx_lon=row["csv_lon"],
+                                rx_lat=float(s["lat"]),
+                                rx_lon=float(s["lon"]),
+                                rx_height=float(s["rx_height"]),
+                                rx_gain=float(s["rx_gain"]),
+                                rx_loss=float(s["rx_loss"]),
                             )
-                            fresnel_obstructed = normalize_bool(
-                                data.get("first_fresnel", {}).get("obstructed")
+                            future = executor.submit(run_los_request, api, payload)
+                            futures[future] = (row, s, rssi)
+    
+                    for future in as_completed(futures):
+                        row, s, rssi = futures[future]
+                        f = s["rssi_field"]
+                        pred = None
+                        diff = None
+                        path_obstructed = None
+                        fresnel_obstructed = None
+                        fresnel_60_obstructed = None
+                        try:
+                            result = future.result()
+                            if result.get("ok"):
+                                pred = result.get("pred")
+                                path_obstructed = result.get("path_obstructed")
+                                fresnel_obstructed = result.get("fresnel_obstructed")
+                                fresnel_60_obstructed = result.get("fresnel_60_obstructed")
+                                st = per_site[f]
+                                st["completed"] += 1
+                            else:
+                                per_site[f]["failed"] += 1
+                                error = result.get("error", "LOS request failed")
+                                print(
+                                    f"Row {row['idx']} site {f}: LOS request failed: {error}",
+                                    file=sys.stderr,
+                                )
+                        except Exception as exc:
+                            per_site[f]["failed"] += 1
+                            print(
+                                f"Row {row['idx']} site {f}: LOS request failed: {exc}",
+                                file=sys.stderr,
                             )
-                            fresnel_60_obstructed = normalize_bool(
-                                data.get(
-                                    "fresnel_60", {}
-                                ).get("obstructed")
-                            )
-                            los_obstructed_val = path_obstructed
-                            first_fresnel_val = fresnel_obstructed
-                            fresnel_60_val = fresnel_60_obstructed
-
+    
                         if pred is not None:
                             pred_f = abs(float(pred)) * -1
                             rssi_f = float(rssi)
                             diff = pred_f - rssi_f
-
-                            per_site[f]["diff_values"].append(diff)
-                            per_site[f]["x"].append(idx)
-                            per_site[f]["rssi"].append(rssi_f)
-                            per_site[f]["pred"].append(pred_f)
-                            per_site[f]["diff"].append(diff)
-                            if fresnel_60_obstructed is True:
-                                per_site[f]["fresnel_60_obstructed_x"].append(idx)
-                                per_site[f]["fresnel_60_obstructed_diff"].append(diff)
+    
+                            st = per_site[f]
+                            st["diff_values"].append(diff)
+                            st["x"].append(row["idx"])
+                            st["rssi"].append(rssi_f)
+                            st["pred"].append(pred_f)
+                            st["diff"].append(diff)
+                            if path_obstructed is True:
+                                st["los_obstructed_x"].append(row["idx"])
+                                st["los_obstructed_diff"].append(diff)
+                            elif fresnel_60_obstructed is True:
+                                st["fresnel_60_obstructed_x"].append(row["idx"])
+                                st["fresnel_60_obstructed_diff"].append(diff)
                             elif fresnel_obstructed is True:
-                                per_site[f]["first_fresnel_obstructed_x"].append(idx)
-                                per_site[f]["first_fresnel_obstructed_diff"].append(
-                                    diff
-                                )
-                            elif path_obstructed is True:
-                                per_site[f]["los_obstructed_x"].append(idx)
-                                per_site[f]["los_obstructed_diff"].append(diff)
+                                st["first_fresnel_obstructed_x"].append(row["idx"])
+                                st["first_fresnel_obstructed_diff"].append(diff)
                             else:
-                                per_site[f]["los_fresnel_clear_x"].append(idx)
-                                per_site[f]["los_fresnel_clear_diff"].append(diff)
-
-                    except Exception as exc:
-                        per_site[f]["failed"] += 1
-                        print(
-                            f"Row {idx} site {f}: LOS request failed: {exc}",
-                            file=sys.stderr,
+                                st["los_fresnel_clear_x"].append(row["idx"])
+                                st["los_fresnel_clear_diff"].append(diff)
+    
+                        row["results"][f] = (
+                            pred,
+                            path_obstructed,
+                            fresnel_obstructed,
+                            fresnel_60_obstructed,
                         )
-
-                    out_row += [
-                        rssi,
-                        pred,
-                        los_obstructed_val,
-                        first_fresnel_val,
-                        fresnel_60_val,
-                    ]
-                    if not args.geojson_only:
+    
                         completed_requests += 1
-                        if total_requests > 0:
-                            elapsed = time.monotonic() - start_time
+                        now = time.monotonic()
+                        if total_requests > 0 and (
+                            now - last_progress_t >= 1.0 or completed_requests % 25 == 0
+                        ):
+                            elapsed = now - start_time
                             avg = elapsed / completed_requests
                             remaining = (total_requests - completed_requests) * avg
                             percent = (completed_requests / total_requests) * 100
@@ -646,12 +704,159 @@ def main() -> int:
                                 f"ETA {format_duration(remaining)}",
                                 file=sys.stderr,
                             )
+                            last_progress_t = now
+    
+                for row in rows:
+                    out_row = [row["idx"], row["csv_lat"], row["csv_lon"]]
+                    for s in detected_sites:
+                        f = s["rssi_field"]
+                        rssi = row["rssi_by_site"].get(f)
+                        pred, path_obstructed, fresnel_obstructed, fresnel_60_obstructed = (
+                            row["results"].get(f, (None, None, None, None))
+                        )
+                        out_row += [
+                            rssi,
+                            pred,
+                            path_obstructed,
+                            fresnel_obstructed,
+                            fresnel_60_obstructed,
+                        ]
+                    writer.writerow(out_row)
+            else:
+                for idx, row in enumerate(reader, start=1):
+                    lat_val = (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
+                    lon_val = (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
+    
+                    if not lat_val or not lon_val:
+                        continue
+                    if lat_val == LAT_FIELD or lon_val == LON_FIELD:
+                        continue
+    
+                    try:
+                        raw_lat = float(lat_val)
+                        raw_lon = float(lon_val)
+                    except ValueError:
+                        continue
+    
+                    csv_lat = raw_lat / COORD_SCALE
+                    csv_lon = raw_lon / COORD_SCALE
+                    rows_with_coords += 1
+    
+                    out_row = [idx, csv_lat, csv_lon]
+                    for s in detected_sites:
+                        f = s["rssi_field"]
+                        rssi = parse_optional_float(row.get(f))
+                        pred = None
+                        diff = None
+                        path_obstructed = None
+                        fresnel_obstructed = None
+                        fresnel_60_obstructed = None
+    
+                        if args.geojson_only:
+                            out_row += [rssi, None, None, None, None]
+                            continue
+    
+                        if rssi is None:
+                            per_site[f]["skipped_no_rssi"] += 1
+                            out_row += [None, None, None, None, None]
+                            continue
+    
+                        payload = build_payload(
+                            tx_lat=csv_lat,
+                            tx_lon=csv_lon,
+                            rx_lat=float(s["lat"]),
+                            rx_lon=float(s["lon"]),
+                            rx_height=float(s["rx_height"]),
+                            rx_gain=float(s["rx_gain"]),
+                            rx_loss=float(s["rx_loss"]),
+                        )
+    
+                        try:
+                            submit = http_json(
+                                f"{api.base_url}/los", payload, api.request_timeout
+                            )
+                            task_id = submit["task_id"]
+                            status = poll_task(api, task_id)
+                            st = per_site[f]
+                            st["completed"] += 1
+    
+                            if "data" in status and status["data"]:
+                                data = json.loads(status["data"])
+                                pred = data.get("rx_signal_power")
+                                path_obstructed = normalize_bool(
+                                    data.get("path", {}).get("obstructed")
+                                )
+                                fresnel_obstructed = normalize_bool(
+                                    data.get("first_fresnel", {}).get("obstructed")
+                                )
+                                fresnel_60_obstructed = normalize_bool(
+                                    data.get(
+                                        "freshnel_60", data.get("fresnel_60", {})
+                                    ).get("obstructed")
+                                )
+    
+                            if pred is not None:
+                                pred_f = abs(float(pred)) * -1
+                                rssi_f = float(rssi)
+                                diff = pred_f - rssi_f
+    
+                                st["diff_values"].append(diff)
+                                st["x"].append(idx)
+                                st["rssi"].append(rssi_f)
+                                st["pred"].append(pred_f)
+                                st["diff"].append(diff)
+    
+                                if path_obstructed is True:
+                                    st["los_obstructed_x"].append(idx)
+                                    st["los_obstructed_diff"].append(diff)
+                                elif fresnel_60_obstructed is True:
+                                    st["fresnel_60_obstructed_x"].append(idx)
+                                    st["fresnel_60_obstructed_diff"].append(diff)
+                                elif fresnel_obstructed is True:
+                                    st["first_fresnel_obstructed_x"].append(idx)
+                                    st["first_fresnel_obstructed_diff"].append(diff)
+                                else:
+                                    st["los_fresnel_clear_x"].append(idx)
+                                    st["los_fresnel_clear_diff"].append(diff)
+    
+                        except Exception as exc:
+                            per_site[f]["failed"] += 1
+                            print(
+                                f"Row {idx} site {f}: LOS request failed: {exc}",
+                                file=sys.stderr,
+                            )
+    
+                        out_row += [
+                            rssi,
+                            pred,
+                            path_obstructed,
+                            fresnel_obstructed,
+                            fresnel_60_obstructed,
+                        ]
+    
+                        completed_requests += 1
+                        now = time.monotonic()
+                        if total_requests > 0 and (
+                            now - last_progress_t >= 1.0 or completed_requests % 25 == 0
+                        ):
+                            elapsed = now - start_time
+                            avg = elapsed / completed_requests
+                            remaining = (total_requests - completed_requests) * avg
+                            percent = (completed_requests / total_requests) * 100
+                            print(
+                                f"Progress: {percent:.1f}% ({completed_requests}/{total_requests}) "
+                                f"ETA {format_duration(remaining)}",
+                                file=sys.stderr,
+                            )
+                            last_progress_t = now
+    
+                    writer.writerow(out_row)
 
-                writer.writerow(out_row)
-
+    # -----------------------------------------------------------------------
+    # stats + plots
+    # -----------------------------------------------------------------------
     if not args.geojson_only:
         with open(output_txt_path, "w", encoding="utf-8") as out_txt:
-            # Per-site stats + per-site plots
             for s in detected_sites:
                 f = s["rssi_field"]
                 st = per_site[f]
@@ -664,19 +869,20 @@ def main() -> int:
                     rmse = math.sqrt(
                         sum(v * v for v in st["diff_values"]) / len(st["diff_values"])
                     )
+
                     print(f"RSSI stats ({f}):", file=out_txt)
                     print(f"count={len(st['diff_values'])}", file=out_txt)
                     print(f"mean_abs_error={mean_abs:.3f}", file=out_txt)
                     print(f"mean_error={mean_err:.3f}", file=out_txt)
                     print(f"max_abs_error={max_abs:.3f}", file=out_txt)
                     print(f"rmse={rmse:.3f}", file=out_txt)
+
                 print(
                     f"Rows ({f}): completed={st['completed']} failed={st['failed']} skipped_no_rssi={st['skipped_no_rssi']}",
                     file=out_txt,
                 )
                 print("", file=out_txt)
 
-                # !xxxx_diff.png
                 save_series_plot(
                     st["x"],
                     st["diff"],
@@ -686,15 +892,14 @@ def main() -> int:
                     out_png=str(output_dir / f"{f}_diff.png"),
                     green_x=st["los_fresnel_clear_x"],
                     green_y=st["los_fresnel_clear_diff"],
-                    red_x=st["fresnel_60_obstructed_x"],
-                    red_y=st["fresnel_60_obstructed_diff"],
+                    yellow_x=st["fresnel_60_obstructed_x"],
+                    yellow_y=st["fresnel_60_obstructed_diff"],
                     orange_x=st["first_fresnel_obstructed_x"],
                     orange_y=st["first_fresnel_obstructed_diff"],
-                    yellow_x=st["los_obstructed_x"],
-                    yellow_y=st["los_obstructed_diff"],
+                    red_x=st["los_obstructed_x"],
+                    red_y=st["los_obstructed_diff"],
                 )
 
-                # !xxxx_val.png  (CSV RSSI + predicted RSSI)
                 save_two_series_plot(
                     st["x"],
                     st["rssi"],
@@ -708,7 +913,6 @@ def main() -> int:
                 )
 
             if len(detected_sites) > 1:
-                # all_sites_diff.png  -> 3 lines (diff per site), X=row ID
                 diff_series = []
                 for s in detected_sites:
                     f = s["rssi_field"]
@@ -727,7 +931,6 @@ def main() -> int:
                     out_png=str(output_dir / "all_sites_diff.png"),
                 )
 
-                # all_sites_rssi.png -> 6 lines (csv + predicted for each site), X=row ID
                 rssi_series = []
                 for s in detected_sites:
                     f = s["rssi_field"]

@@ -1,4 +1,4 @@
-row,lat,lon,!75f19024_mesaured_rssi,!75f19024_predicted_rssi,!75f19024_los_obstructed,!75f19024_first_fresnel_obstructed,!75f19024_fresnel_60_obstructed
+row,lat,lon,!75f19024_mesaured_rssi,!75f19024_predicted_rssi,!75f19024_los_obstructed,!75f19024_fresnel_60_obstructed,!75f19024_first_fresnel_obstructed
 1,45.8434998,13.734169,-54.0,35.45,False,False,False
 2,45.8435046,13.734147,-53.0,35.45,False,False,False
 3,45.8417915,13.735574,-65.0,-40.27,False,False,False

@@ -201,7 +201,7 @@ class Splat:
 
                 logger.info("SPLAT! coverage prediction completed successfully.")
 
-                self._save_all_files_from_tmpdir(tmpdir)
+                #self._save_all_files_from_tmpdir(tmpdir)
 
                 with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
                     with open(

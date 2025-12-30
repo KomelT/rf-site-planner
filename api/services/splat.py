@@ -152,8 +152,8 @@ class Splat:
                     "tx.qth",
                     "-r",
                     "rx.qth",
-                    #"-L",
-                    #str(request.rx_height),
+                    # "-L",
+                    # str(request.rx_height),
                     "-gc",
                     str(request.clutter_height),
                     "-d",
@@ -175,7 +175,7 @@ class Splat:
                     # "-kml",
                     "-gpsav",
                     "-metric",
-                    "-olditm",
+                    "-olditm" if request.itm_model else "",
                 ]
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 
@@ -414,8 +414,17 @@ class Splat:
                                                 - request.rx_loss,
                                                 "path_loss": float(path_loss_line),
                                                 "longley_rice_loss": float(
-                                                    (request.tx_power + (request.tx_gain - 2.15) - request.tx_loss) - float(longley_rice_loss_line) + request.rx_gain - request.rx_loss
-
+                                                    longley_rice_loss_line
+                                                ),
+                                                "fake_rssi_prediction": float(
+                                                    (
+                                                        request.tx_power
+                                                        + (request.tx_gain - 2.15)
+                                                        - request.tx_loss
+                                                    )
+                                                    - float(longley_rice_loss_line)
+                                                    + request.rx_gain
+                                                    - request.rx_loss
                                                 ),
                                             }
                                         )
@@ -510,7 +519,7 @@ class Splat:
                     "-db",
                     str(request.min_dbm),
                     "-kml",
-                    "-olditm",
+                    "-olditm" if request.itm_model else "",
                 ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 

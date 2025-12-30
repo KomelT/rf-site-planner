@@ -70,6 +70,7 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-2">
 					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
+					<Toggle title="ITM mode" v-model:value="simulation.itm_mode" />
 				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
@@ -151,6 +152,7 @@ const defaultSimulationValues: ComputedRef<LosSimulatorSite> = computed(() => {
 		situation_fraction: 90,
 		time_fraction: 95,
 		high_resolution: false,
+		itm_mode: true,
 	};
 });
 

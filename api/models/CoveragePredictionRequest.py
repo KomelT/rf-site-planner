@@ -30,31 +30,23 @@ class CoveragePredictionRequest(BaseModel):
     rx_height: float = Field(
         1, ge=1, description="Receiver height above ground in meters (>= 1 m)"
     )
-    rx_gain: float = Field(1, ge=0, description="Receiver antenna gain in dB (>= 0)")
     rx_loss: Optional[float] = Field(
         0.0, ge=0, description="RX loss in dB (default: 0.0)"
     )
-    clutter_height: float = Field(
-        0, ge=0, description="Ground clutter height in meters (>= 0)"
+    colormap: Literal[tuple(AVAILABLE_COLORMAPS)] = Field(
+        "rainbow",
+        description=f"Matplotlib colormap to use. Available options: {', '.join(AVAILABLE_COLORMAPS)}",
+    )
+    min_dbm: float = Field(
+        -130.0,
+        description="Minimum dBm value for the colormap (default: -130.0).",
+    )
+    max_dbm: float = Field(
+        -30.0,
+        description="Maximum dBm value for the colormap (default: -30.0).",
     )
 
-    # Environmental
-    ground_dielectric: Optional[float] = Field(
-        15.0, ge=1, description="Ground dielectric constant (default: 15.0)"
-    )
-    ground_conductivity: Optional[float] = Field(
-        0.005, ge=0, description="Ground conductivity in S/m (default: 0.005)"
-    )
-    atmosphere_bending: Optional[float] = Field(
-        301.0,
-        ge=0,
-        description="Atmospheric bending constant in N-units (default: 301.0)",
-    )
-
-    # Model Settings
-    radius: float = Field(
-        1.0, ge=1.0, description="Model maximum range in kilometers (>= 1 km)"
-    )
+    # Environment
     radio_climate: Literal[
         "equatorial",
         "continental_subtropical",
@@ -83,21 +75,30 @@ class CoveragePredictionRequest(BaseModel):
         le=100,
         description="Percentage of times where the signal prediction is expected to be valid (default 90).",
     )
+    ground_dielectric: Optional[float] = Field(
+        15.0, ge=1, description="Ground dielectric constant (default: 15.0)"
+    )
+    ground_conductivity: Optional[float] = Field(
+        0.005, ge=0, description="Ground conductivity in S/m (default: 0.005)"
+    )
+    atmosphere_bending: Optional[float] = Field(
+        301.0,
+        ge=0,
+        description="Atmospheric bending constant in N-units (default: 301.0)",
+    )
+    clutter_height: float = Field(
+        0, ge=0, description="Ground clutter height in meters (>= 0)"
+    )
 
     # Output Settings
-    colormap: Literal[tuple(AVAILABLE_COLORMAPS)] = Field(
-        "rainbow",
-        description=f"Matplotlib colormap to use. Available options: {', '.join(AVAILABLE_COLORMAPS)}",
-    )
-    min_dbm: float = Field(
-        -130.0,
-        description="Minimum dBm value for the colormap (default: -130.0).",
-    )
-    max_dbm: float = Field(
-        -30.0,
-        description="Maximum dBm value for the colormap (default: -30.0).",
+    radius: float = Field(
+        1.0, ge=1.0, description="Model maximum range in kilometers (>= 1 km)"
     )
     high_resolution: bool = Field(
         False,
         description="Use optional 1-arcsecond / 30 meter resolution  terrain tiles instead of the default 3-arcsecond / 90 meter (default: False).",
+    )
+    itm_model: bool = Field(
+        True,
+        description="Include ITM model instead of newer ITWOM (default: True).",
     )

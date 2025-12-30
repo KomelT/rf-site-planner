@@ -33,6 +33,7 @@ export type LosSimulatorPayload = {
 	situation_fraction: number;
 	time_fraction: number;
 	high_resolution: boolean;
+	itm_mode: boolean;
 };
 
 export type LosSimulatorSite = LosSimulatorPayload & {
@@ -77,7 +78,6 @@ export type CoverageSimulatorPayload = {
 	tx_loss: number;
 	frequency_mhz: number;
 	rx_height: number;
-	rx_gain: number;
 	rx_loss: number;
 	clutter_height: number;
 	ground_dielectric: number;
@@ -92,6 +92,7 @@ export type CoverageSimulatorPayload = {
 	colormap: string;
 	min_dbm: number;
 	max_dbm: number;
+	itm_mode: boolean;
 };
 
 export type CoverageSimulatorSite = CoverageSimulatorPayload & {

@@ -69,6 +69,7 @@
 				<div class="flex flex-row gap-2 mt-3">
 					<InputNumber title="Max range (km)" :min="1" :max="300" v-model:value="simulation.radius" />
 					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
+					<Toggle title="ITM mode" v-model:value="simulation.itm_mode" />
 				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
@@ -151,6 +152,7 @@ const defaultSimulationValues: ComputedRef<CoverageSimulatorSite> = computed(
 			colormap: "plasma",
 			min_dbm: -153,
 			max_dbm: -80,
+			itm_mode: true,
 		};
 	},
 );

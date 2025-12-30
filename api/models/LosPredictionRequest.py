@@ -38,11 +38,8 @@ class LosPredictionRequest(BaseModel):
     )
     rx_gain: float = Field(1, ge=0, description="Receiver antenna gain in dB (>= 0)")
     rx_loss: float = Field(0, ge=0, description="Receiver system loss in dB (>= 0)")
-    clutter_height: float = Field(
-        0, ge=0, description="Ground clutter height in meters (>= 0)"
-    )
 
-    # Environmental
+    # Environment
     ground_dielectric: Optional[float] = Field(
         15.0, ge=1, description="Ground dielectric constant (default: 15.0)"
     )
@@ -54,8 +51,6 @@ class LosPredictionRequest(BaseModel):
         ge=0,
         description="Atmospheric bending constant in N-units (default: 301.0)",
     )
-
-    # Model Settings
     radio_climate: Literal[
         "equatorial",
         "continental_subtropical",
@@ -72,6 +67,11 @@ class LosPredictionRequest(BaseModel):
         "vertical",
         description="Signal polarization, 'horizontal' or 'vertical' (default: 'vertical')",
     )
+    clutter_height: float = Field(
+        0, ge=0, description="Ground clutter height in meters (>= 0)"
+    )
+
+    # Simulation options
     situation_fraction: Optional[float] = Field(
         50,
         gt=1,
@@ -84,9 +84,11 @@ class LosPredictionRequest(BaseModel):
         le=100,
         description="Percentage of times where the signal prediction is expected to be valid (default 90).",
     )
-
-    # Output Settings
     high_resolution: bool = Field(
         False,
         description="Use optional 1-arcsecond / 30 meter resolution terrain tiles instead of the default 3-arcsecond / 90 meter (default: False).",
+    )
+    itm_model: bool = Field(
+        True,
+        description="Include ITM model instead of newer ITWOM (default: True).",
     )

@@ -296,8 +296,11 @@ class Splat:
                                         path_message = ""
                                         path_obstructions = []
 
-                                        first_freshnel_obstruction = True
-                                        first_freshnel_message = ""
+                                        first_fresnel_obstruction = True
+                                        first_fresnel_message = ""
+
+                                        fresnel_60_obstruction = True
+                                        fresnel_60_message = ""
 
                                         for i, line in enumerate(tx_to_rx_lines):
                                             if (
@@ -309,8 +312,12 @@ class Splat:
                                                 b"The first Fresnel zone is clear."
                                                 in line
                                             ):
-                                                first_freshnel_obstruction = False
-
+                                                first_fresnel_obstruction = False
+                                            elif (
+                                                b"60% of the first Fresnel zone is clear."
+                                                in line
+                                            ):
+                                                fresnel_60_obstruction = False
                                             elif (
                                                 b"Between rx and tx, SPLAT! detected obstructions at:"
                                                 in line
@@ -329,31 +336,41 @@ class Splat:
                                                     decoded_parts = [
                                                         float(part.split(" ")[0])
                                                         for part in decoded_parts
+                                                        if part
                                                     ]
+                                                    if len(decoded_parts) < 2:
+                                                        continue
 
                                                     val = decoded_parts[1]
                                                     original_longitude = (
                                                         360 - val if val > 180 else -val
                                                     )
-                                                    decoded_parts[1] = (
-                                                        original_longitude
-                                                    )
+                                                    decoded_parts[1] = original_longitude
 
-                                                    path_obstructions.append(
-                                                        decoded_parts
-                                                    )
+                                                    path_obstructions.append(decoded_parts)
 
                                             elif (
-                                                b"to clear all obstructions detected by SPLAT!."
+                                                b"to clear all obstructions detected by SPLAT!"
                                                 in line
                                             ):
-                                                path_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                                if i + 1 < len(tx_to_rx_lines):
+                                                    path_message = (
+                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                                    )
 
                                             elif (
                                                 b"to clear the first Fresnel zone."
                                                 in line
                                             ):
-                                                first_freshnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                                if i + 1 < len(tx_to_rx_lines):
+                                                    first_fresnel_message = (
+                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                                    )
+                                            elif (b"to clear 60% of the first Fresnel zone." in line):
+                                                if i + 1 < len(tx_to_rx_lines):
+                                                    fresnel_60_message = (
+                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                                    )
 
                                         # extract numbers
                                         signal_power_line = ""
@@ -362,33 +379,29 @@ class Splat:
 
                                         for line in tx_to_rx_lines:
                                             if b"Signal power level at rx:" in line:
-                                                signal_power_line = (
-                                                    line.strip()
-                                                    .split(b" ")[5]
-                                                    .strip()
-                                                    .decode("utf-8")
-                                                )
+                                                parts = line.strip().split(b" ")
+                                                if len(parts) > 5:
+                                                    signal_power_line = (
+                                                        parts[5].strip().decode("utf-8")
+                                                    )
                                             if b"Free space path loss:" in line:
-                                                path_loss_line = (
-                                                    line.strip()
-                                                    .split(b" ")[4]
-                                                    .strip()
-                                                    .decode("utf-8")
-                                                )
+                                                parts = line.strip().split(b" ")
+                                                if len(parts) > 4:
+                                                    path_loss_line = (
+                                                        parts[4].strip().decode("utf-8")
+                                                    )
                                             if b"Longley-Rice path loss:" in line:
-                                                longley_rice_loss_line = (
-                                                    line.strip()
-                                                    .split(b" ")[3]
-                                                    .strip()
-                                                    .decode("utf-8")
-                                                )
+                                                parts = line.strip().split(b" ")
+                                                if len(parts) > 3:
+                                                    longley_rice_loss_line = (
+                                                        parts[3].strip().decode("utf-8")
+                                                    )
                                             if b"ITWOM Version 3.0 path loss:" in line:
-                                                longley_rice_loss_line = (
-                                                    line.strip()
-                                                    .split(b" ")[5]
-                                                    .strip()
-                                                    .decode("utf-8")
-                                                )
+                                                parts = line.strip().split(b" ")
+                                                if len(parts) > 5:
+                                                    longley_rice_loss_line = (
+                                                        parts[5].strip().decode("utf-8")
+                                                    )
 
                                         return dumps(
                                             {
@@ -403,9 +416,13 @@ class Splat:
                                                     "message": path_message,
                                                     "obstructions": path_obstructions,
                                                 },
-                                                "first_freshnel": {
-                                                    "obstructed": first_freshnel_obstruction,
-                                                    "message": first_freshnel_message,
+                                                "first_fresnel": {
+                                                    "obstructed": first_fresnel_obstruction,
+                                                    "message": first_fresnel_message,
+                                                },
+                                                "fresnel_60": {
+                                                    "obstructed": fresnel_60_obstruction,
+                                                    "message": fresnel_60_message,
                                                 },
                                                 "rx_signal_power": float(
                                                     signal_power_line

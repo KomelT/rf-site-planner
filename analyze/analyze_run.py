@@ -389,6 +389,50 @@ def format_duration(seconds: float) -> str:
     return f"{sec}s"
 
 
+def write_geojson(csv_path: Path, out_path: Path) -> int:
+    with open(csv_path, newline="", encoding="utf-8") as fh:
+        reader = csv.DictReader(fh)
+        if not reader.fieldnames:
+            raise ValueError("Input file has no header row.")
+        if LAT_FIELD not in reader.fieldnames or LON_FIELD not in reader.fieldnames:
+            raise ValueError(f"Missing required columns. Found: {reader.fieldnames}")
+
+        features = []
+        for idx, row in enumerate(reader, start=1):
+            lat_val = (row.get(LAT_FIELD) or "").strip().strip('"').strip("'")
+            lon_val = (row.get(LON_FIELD) or "").strip().strip('"').strip("'")
+            if not lat_val or not lon_val:
+                continue
+            if lat_val == LAT_FIELD or lon_val == LON_FIELD:
+                continue
+            try:
+                raw_lat = float(lat_val)
+                raw_lon = float(lon_val)
+            except ValueError:
+                continue
+
+            csv_lat = raw_lat / COORD_SCALE
+            csv_lon = raw_lon / COORD_SCALE
+
+            props = dict(row)
+            props["row"] = idx
+            props["lat"] = csv_lat
+            props["lon"] = csv_lon
+
+            features.append(
+                {
+                    "type": "Feature",
+                    "geometry": {"type": "Point", "coordinates": [csv_lon, csv_lat]},
+                    "properties": props,
+                }
+            )
+
+    out = {"type": "FeatureCollection", "features": features}
+    with open(out_path, "w", encoding="utf-8") as out_fh:
+        json.dump(out, out_fh, ensure_ascii=True)
+    return len(features)
+
+
 def main() -> int:
     args = parse_args()
     api = ApiConfig(base_url=API_URL.rstrip("/"))
@@ -402,6 +446,16 @@ def main() -> int:
 
     output_csv_path = output_dir / "analyze.csv"
     output_txt_path = output_dir / "analyze.txt"
+    output_geojson_path = output_dir / "analyze.geojson"
+
+    if args.geojson_only:
+        try:
+            count = write_geojson(csv_path, output_geojson_path)
+        except ValueError as exc:
+            print(str(exc), file=sys.stderr)
+            return 1
+        print(f"Wrote GeoJSON: {output_geojson_path} ({count} points)", file=sys.stderr)
+        return 0
 
     # -----------------------------------------------------------------------
     # no-prediction: rebuild plots/stats from analyze.csv
@@ -508,6 +562,15 @@ def main() -> int:
     # prediction mode: read raw csv and call API (unless geojson-only)
     # -----------------------------------------------------------------------
     else:
+        existing_rows = {}
+        if args.geojson_only and output_csv_path.exists():
+            with open(output_csv_path, newline="", encoding="utf-8") as existing_fh:
+                existing_reader = csv.DictReader(existing_fh)
+                for row in existing_reader:
+                    row_id = (row.get("row") or "").strip()
+                    if row_id:
+                        existing_rows[row_id] = row
+
         with (
             open(csv_path, newline="", encoding="utf-8") as fh,
             open(output_csv_path, "w", newline="", encoding="utf-8") as out_csv,
@@ -752,9 +815,35 @@ def main() -> int:
                         fresnel_obstructed = None
                         fresnel_60_obstructed = None
     
-                        if args.geojson_only:
-                            out_row += [rssi, None, None, None, None]
-                            continue
+                    if args.geojson_only:
+                        existing = existing_rows.get(str(idx)) or existing_rows.get(
+                            str(int(idx))
+                        )
+                        pred_val = None
+                        los_val = None
+                        fresnel_60_val = None
+                        first_fresnel_val = None
+                        if existing:
+                            pred_val = parse_optional_float(
+                                existing.get(f"{f}_predicted_rssi")
+                            )
+                            los_val = normalize_bool(
+                                existing.get(f"{f}_los_obstructed")
+                            )
+                            fresnel_60_val = normalize_bool(
+                                existing.get(f"{f}_fresnel_60_obstructed")
+                            )
+                            first_fresnel_val = normalize_bool(
+                                existing.get(f"{f}_first_fresnel_obstructed")
+                            )
+                        out_row += [
+                            rssi,
+                            pred_val,
+                            los_val,
+                            fresnel_60_val,
+                            first_fresnel_val,
+                        ]
+                        continue
     
                         if rssi is None:
                             per_site[f]["skipped_no_rssi"] += 1

@@ -1,24 +1,24 @@
 RSSI stats (!75f19024):
-count=104
-mean_abs_error=19.517
-mean_error=7.675
+count=119
+mean_abs_error=18.100
+mean_error=6.449
 max_abs_error=58.540
-rmse=22.862
-Rows (!75f19024): completed=104 failed=0 skipped_no_rssi=44
+rmse=21.679
+Rows (!75f19024): completed=119 failed=0 skipped_no_rssi=46
 
 RSSI stats (!7369fb6a):
-count=117
-mean_abs_error=23.367
-mean_error=12.499
+count=134
+mean_abs_error=23.378
+mean_error=13.888
 max_abs_error=51.770
-rmse=26.355
-Rows (!7369fb6a): completed=117 failed=0 skipped_no_rssi=31
+rmse=26.212
+Rows (!7369fb6a): completed=134 failed=0 skipped_no_rssi=31
 
 RSSI stats (!da5ad56c):
-count=107
-mean_abs_error=16.942
-mean_error=3.891
+count=123
+mean_abs_error=16.423
+mean_error=4.637
 max_abs_error=54.990
-rmse=19.967
-Rows (!da5ad56c): completed=107 failed=0 skipped_no_rssi=41
+rmse=19.674
+Rows (!da5ad56c): completed=123 failed=0 skipped_no_rssi=42
 

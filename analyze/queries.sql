@@ -36,13 +36,14 @@ WITH relevant AS (
     ON md."payloadId" = p."id"
   WHERE
     mp."hopLimit" = mp."hopStart"
-    AND mp."createdAt" >= TIMESTAMP '2025-12-29 20:00:00'
-    AND mp."createdAt" <  TIMESTAMP '2025-12-29 22:40:00'
-    AND mp."rxRssi" != 0
+    AND mp."createdAt" >= TIMESTAMP '2025-12-28 15:06:00'
+    AND mp."createdAt" <  TIMESTAMP '2025-12-28 15:50:12'
+    AND mp."rxRssi" = 0
     AND mp."from" = '1122137108'
-    AND se."gatewayId" = '!75f19024'
+    AND se."gatewayId" = '!42e27414'
     AND md."portNum" = 3
-  ORDER BY mp."createdAt" DESC
+  GROUP BY
+    mp."meshDataId"
 ),
 latest_per_gateway AS (
   SELECT DISTINCT ON (mp."meshDataId", se."gatewayId")
@@ -78,4 +79,5 @@ GROUP BY
   r."latitudeI",
   r."longitudeI",
   r."createdAt"
-ORDER BY r."createdAt" ASC;
+ORDER BY
+  r."createdAt" ASC;

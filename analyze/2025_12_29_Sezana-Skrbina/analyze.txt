@@ -1,8 +1,0 @@
-RSSI stats (!75f19024):
-count=15
-mean_abs_error=26.227
-mean_error=26.227
-max_abs_error=41.290
-rmse=28.023
-Rows (!75f19024): completed=15 failed=0 skipped_no_rssi=0
-

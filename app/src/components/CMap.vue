@@ -22,7 +22,7 @@ import {
 	useMap
 } from "@indoorequal/vue-maplibre-gl";
 import { Ref, ref, watch } from "vue";
-import { DataDrivenPropertyValueSpecification, PropertyValueSpecification, StyleSpecification } from "maplibre-gl";
+import { DataDrivenPropertyValueSpecification, PropertyValueSpecification, StyleSpecification, RasterSourceSpecification } from "maplibre-gl";
 import { useStore } from "../stores/store";
 import CentralNodeTable from "./Map/CentralNodeTable.vue";
 import LosChart from "./Map/LosChart.vue";
@@ -76,22 +76,30 @@ function setMapStyle(style: string) {
 	let tmpStyle = map.map?.getStyle();
 	if (!tmpStyle) return;
 
+	const basemapSource = (tmpStyle.sources && tmpStyle.sources.basemap) as RasterSourceSpecification | undefined;
+	if (!basemapSource) return;
+
+	// ensure tiles array exists before writing
+	if (!basemapSource.tiles) {
+		basemapSource.tiles = [];
+	}
+
 	switch (style) {
 		case "openstreetmap":
-			tmpStyle.sources.basemap.tiles[0] = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
-			tmpStyle.sources.basemap.attribution = "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>";
+			basemapSource.tiles[0] = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
+			basemapSource.attribution = "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>";
 			break;
 		case "opentopomap":
-			tmpStyle.sources.basemap.tiles[0] = "https://a.tile.opentopomap.org/{z}/{x}/{y}.png";
-			tmpStyle.sources.basemap.attribution = "Basemap data <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a> | Basemap style <a href='https://www.opentopomap.org' target=_blank>©  OpenTopoMap contributors</a>";
+			basemapSource.tiles[0] = "https://a.tile.opentopomap.org/{z}/{x}/{y}.png";
+			basemapSource.attribution = "Basemap data <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a> | Basemap style <a href='https://www.opentopomap.org' target=_blank>©  OpenTopoMap contributors</a>";
 			break;
 		case "satellite":
-			tmpStyle.sources.basemap.tiles[0] = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-			tmpStyle.sources.basemap.attribution = "Basemap <a href='https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/basemap-attribution/' target=_blank>© Esri</a>";
+			basemapSource.tiles[0] = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+			basemapSource.attribution = "Basemap <a href='https://developers.arcgis.com/documentation/mapping-apis-and-services/deployment/basemap-attribution/' target=_blank>© Esri</a>";
 			break;
 		default:
-			tmpStyle.sources.basemap.tiles[0] = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
-			tmpStyle.sources.basemap.attribution = "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>";
+			basemapSource.tiles[0] = "https://a.tile.openstreetmap.org/{z}/{x}/{y}.png";
+			basemapSource.attribution = "Basemap <a href='https://www.openstreetmap.org' target=_blank>©  OpenStreetMap contributors</a>";
 	}
 
 	map.map?.setStyle(tmpStyle);
@@ -128,8 +136,8 @@ const geojson = ref({
 watch(
 	() => [store.geoJsonLine.type, store.geoJsonLine.coordinates],
 	([newType, newCoordinates]) => {
-		geojson.value.features[0].geometry.type = newType;
-		geojson.value.features[0].geometry.coordinates = newCoordinates;
+		geojson.value.features[0].geometry.type = newType as "LineString" | "MultiLineString";
+		geojson.value.features[0].geometry.coordinates = newCoordinates as any;
 		geojson.value = { ...geojson.value };
 	},
 	{ deep: true, immediate: true },

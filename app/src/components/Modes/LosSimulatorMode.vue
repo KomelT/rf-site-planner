@@ -241,9 +241,11 @@ async function runSimulation() {
 		console.log("LOS simulation data:", lossData);
 
 		store.losSimModeData.chart.rx_signal_power = lossData.rx_signal_power;
+		store.losSimModeData.chart.path_loss_rssi = lossData.path_loss_rssi;
 		store.losSimModeData.chart.path_loss = lossData.path_loss;
 		store.losSimModeData.chart.lr_it_loss_line_type = lossData.lr_it_loss_line_type;
 		store.losSimModeData.chart.lr_it_loss = lossData.lr_it_loss;
+		store.losSimModeData.chart.lr_it_loss_rssi = lossData.lr_it_loss_rssi;
 		store.losSimModeData.chart.path.obstructed = lossData.path.obstructed;
 		store.losSimModeData.chart.path.message = lossData.path.message;
 		store.losSimModeData.chart.path.obstructions = lossData.path.obstructions;

@@ -58,9 +58,11 @@ export type LosSimulatorResponse = {
 		message: string;
 	};
 	rx_signal_power: number;
+	path_loss_rssi: number;
 	path_loss: number;
 	lr_it_loss_line_type: string;
 	lr_it_loss: number;
+	lr_it_loss_rssi: number;
 };
 
 export type LosSimulatorResponseUpdated = LosSimulatorResponse & {

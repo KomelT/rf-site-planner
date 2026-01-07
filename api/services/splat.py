@@ -438,18 +438,36 @@ class Splat:
                                                 + request.rx_gain
                                                 - request.rx_loss,
                                                 "path_loss": float(path_loss_line),
+                                                "path_loss_rssi": request.tx_power
+                                                + (
+                                                    (request.tx_gain - 2.15)
+                                                    if request.tx_gain != 0
+                                                    else 0
+                                                )
+                                                - request.tx_loss
+                                                - float(path_loss_line)
+                                                + (
+                                                    (request.rx_gain - 2.15)
+                                                    if request.rx_gain != 0
+                                                    else 0
+                                                )
+                                                - request.rx_loss,
                                                 "lr_it_loss_line_type": lr_it_loss_line_type,
                                                 "lr_it_loss": float(lr_it_loss_line),
-                                                "fake_rssi_prediction": float(
-                                                    (
-                                                        request.tx_power
-                                                        + (request.tx_gain - 2.15)
-                                                        - request.tx_loss
-                                                    )
-                                                    - float(lr_it_loss_line)
-                                                    + request.rx_gain
-                                                    - request.rx_loss
-                                                ),
+                                                "lr_it_loss_rssi": request.tx_power
+                                                + (
+                                                    (request.tx_gain - 2.15)
+                                                    if request.tx_gain != 0
+                                                    else 0
+                                                )
+                                                - request.tx_loss
+                                                - float(lr_it_loss_line)
+                                                + (
+                                                    (request.rx_gain - 2.15)
+                                                    if request.rx_gain != 0
+                                                    else 0
+                                                )
+                                                - request.rx_loss,
                                             }
                                         )
 

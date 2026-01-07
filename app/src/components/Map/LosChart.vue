@@ -7,9 +7,13 @@
           :series="store.losSimModeData.chart.data" :options="store.losSimModeData.chart.options" />
         <div class="flex items-center justify-between bg-white p-2 border-t border-gray-300">
           <div class="text-black ml-1">
-            <p><b>Free space path loss: </b>{{ store.losSimModeData.chart.path_loss }} dB</p>
-            <p><b>{{ store.losSimModeData.chart.lr_it_loss_line_type }}: </b>{{ store.losSimModeData.chart.lr_it_loss }} dB</p>
-            <p><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power }} dBm</p>
+            <p><b>Free space path loss: </b>{{ store.losSimModeData.chart.path_loss.toFixed(2) }} dB</p>
+            <p><b>FSPL RSSI: </b>{{ store.losSimModeData.chart.path_loss_rssi.toFixed(2) }} dB</p>
+            <p class="mt-1"><b>{{ store.losSimModeData.chart.lr_it_loss_line_type }}: </b>{{
+              store.losSimModeData.chart.lr_it_loss.toFixed(2) }} dB</p>
+            <p><b>{{ store.losSimModeData.chart.lr_it_loss_line_type.includes("ITWOM") ? "ITWOM" : "Longley-Rice" }}
+                RSSI: </b>{{ store.losSimModeData.chart.lr_it_loss_rssi.toFixed(2) }} dBm</p>
+            <p class="mt-1"><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power.toFixed(2) }} dBm</p>
             <b>{{ store.losSimModeData.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
           </div>
           <Button text="Hide" @click="hide = true" class="px-2! py-3 w-auto! bg-orange-400!" />

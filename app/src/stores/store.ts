@@ -31,9 +31,11 @@ const useStore = defineStore("store", {
 					options: {} as ApexOptions,
 					show: false,
 					rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
+					path_loss_rssi: ref<LosSimulatorResponse["path_loss_rssi"]>(0),
 					path_loss: ref<LosSimulatorResponse["path_loss"]>(0),
 					lr_it_loss: ref<LosSimulatorResponse["lr_it_loss"]>(0),
 					lr_it_loss_line_type: ref<LosSimulatorResponse["lr_it_loss_line_type"]>(""),
+					lr_it_loss_rssi: ref<LosSimulatorResponse["lr_it_loss_rssi"]>(0),
 					path: {
 						obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
 						message: ref<LosSimulatorResponse["path"]["message"]>(""),

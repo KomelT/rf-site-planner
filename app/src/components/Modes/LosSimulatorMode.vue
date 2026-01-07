@@ -203,9 +203,10 @@ watch(
 		rxMarker.value.setLngLat([sim.rx_lon, sim.rx_lat]);
 
 		store.geoJsonLine.type = "LineString";
-		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
-		store.geoJsonLine.coordinates.push([sim.tx_lon, sim.tx_lat]);
-		store.geoJsonLine.coordinates.push([sim.rx_lon, sim.rx_lat]);
+		store.geoJsonLine.coordinates = [
+			[sim.tx_lon, sim.tx_lat],
+			[sim.rx_lon, sim.rx_lat],
+		];
 	},
 	{ immediate: true, deep: true },
 );

@@ -71,7 +71,7 @@ DEFAULTS = {
     "situation_fraction": 50.0,
     "time_fraction": 90.0,
     "high_resolution": True,
-    "itu_model": True,
+    "itm_mode": True,
 }
 
 

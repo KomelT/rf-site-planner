@@ -98,7 +98,7 @@ class CoveragePredictionRequest(BaseModel):
         False,
         description="Use optional 1-arcsecond / 30 meter resolution  terrain tiles instead of the default 3-arcsecond / 90 meter (default: False).",
     )
-    itm_model: bool = Field(
+    itm_mode: bool = Field(
         True,
         description="Include ITM model instead of newer ITWOM (default: True).",
     )

@@ -70,7 +70,7 @@
 				</div>
 				<div class="flex flex-row gap-2 mt-2">
 					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
-					<Toggle title="ITM mode" v-model:value="simulation.itm_mode" />
+					<Toggle title="ITWOM / Longley-Rice" v-model:value="simulation.itm_mode" />
 				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
@@ -238,9 +238,12 @@ async function runSimulation() {
 		const data = await store.fetchSimulationStatus(taskId, 500);
 		const lossData = JSON.parse(data.data) as unknown as LosSimulatorResponse;
 
+		console.log("LOS simulation data:", lossData);
+
 		store.losSimModeData.chart.rx_signal_power = lossData.rx_signal_power;
 		store.losSimModeData.chart.path_loss = lossData.path_loss;
-		store.losSimModeData.chart.longley_rice_loss = lossData.longley_rice_loss;
+		store.losSimModeData.chart.lr_it_loss_line_type = lossData.lr_it_loss_line_type;
+		store.losSimModeData.chart.lr_it_loss = lossData.lr_it_loss;
 		store.losSimModeData.chart.path.obstructed = lossData.path.obstructed;
 		store.losSimModeData.chart.path.message = lossData.path.message;
 		store.losSimModeData.chart.path.obstructions = lossData.path.obstructions;

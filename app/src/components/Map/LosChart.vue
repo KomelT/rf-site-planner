@@ -7,8 +7,8 @@
           :series="store.losSimModeData.chart.data" :options="store.losSimModeData.chart.options" />
         <div class="flex items-center justify-between bg-white p-2 border-t border-gray-300">
           <div class="text-black ml-1">
-            <p><b>Path Loss: </b>{{ store.losSimModeData.chart.path_loss }} dB</p>
-            <p><b>Longley-Rice Loss: </b>{{ store.losSimModeData.chart.longley_rice_loss }} dB</p>
+            <p><b>Free space path loss: </b>{{ store.losSimModeData.chart.path_loss }} dB</p>
+            <p><b>{{ store.losSimModeData.chart.lr_it_loss_line_type }}: </b>{{ store.losSimModeData.chart.lr_it_loss }} dB</p>
             <p><b>Expected RX RSSI: </b>{{ store.losSimModeData.chart.rx_signal_power }} dBm</p>
             <b>{{ store.losSimModeData.chart.path.obstructed ? "LOS is Obstructed" : "LOS is Unobstructed" }}</b>
           </div>

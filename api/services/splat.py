@@ -175,7 +175,7 @@ class Splat:
                     # "-kml",
                     "-gpsav",
                     "-metric",
-                    "-olditm" if request.itm_model else "",
+                    "-olditm" if request.itm_mode else "",
                 ]
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 
@@ -201,7 +201,7 @@ class Splat:
 
                 logger.info("SPLAT! coverage prediction completed successfully.")
 
-                #self._save_all_files_from_tmpdir(tmpdir)
+                # self._save_all_files_from_tmpdir(tmpdir)
 
                 with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
                     with open(
@@ -345,37 +345,39 @@ class Splat:
                                                     original_longitude = (
                                                         360 - val if val > 180 else -val
                                                     )
-                                                    decoded_parts[1] = original_longitude
+                                                    decoded_parts[1] = (
+                                                        original_longitude
+                                                    )
 
-                                                    path_obstructions.append(decoded_parts)
+                                                    path_obstructions.append(
+                                                        decoded_parts
+                                                    )
 
                                             elif (
                                                 b"to clear all obstructions detected by SPLAT!"
                                                 in line
                                             ):
                                                 if i + 1 < len(tx_to_rx_lines):
-                                                    path_message = (
-                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-                                                    )
+                                                    path_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
 
                                             elif (
                                                 b"to clear the first Fresnel zone."
                                                 in line
                                             ):
                                                 if i + 1 < len(tx_to_rx_lines):
-                                                    first_fresnel_message = (
-                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-                                                    )
-                                            elif (b"to clear 60% of the first Fresnel zone." in line):
+                                                    first_fresnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
+                                            elif (
+                                                b"to clear 60% of the first Fresnel zone."
+                                                in line
+                                            ):
                                                 if i + 1 < len(tx_to_rx_lines):
-                                                    fresnel_60_message = (
-                                                        f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-                                                    )
+                                                    fresnel_60_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
 
                                         # extract numbers
                                         signal_power_line = ""
                                         path_loss_line = ""
-                                        longley_rice_loss_line = ""
+                                        lr_it_loss_line = ""
+                                        lr_it_loss_line_type = ""
 
                                         for line in tx_to_rx_lines:
                                             if b"Signal power level at rx:" in line:
@@ -393,13 +395,19 @@ class Splat:
                                             if b"Longley-Rice path loss:" in line:
                                                 parts = line.strip().split(b" ")
                                                 if len(parts) > 3:
-                                                    longley_rice_loss_line = (
+                                                    lr_it_loss_line_type = (
+                                                        "Longley-Rice path loss"
+                                                    )
+                                                    lr_it_loss_line = (
                                                         parts[3].strip().decode("utf-8")
                                                     )
                                             if b"ITWOM Version 3.0 path loss:" in line:
                                                 parts = line.strip().split(b" ")
                                                 if len(parts) > 5:
-                                                    longley_rice_loss_line = (
+                                                    lr_it_loss_line_type = (
+                                                        "ITWOM Version 3.0 path loss"
+                                                    )
+                                                    lr_it_loss_line = (
                                                         parts[5].strip().decode("utf-8")
                                                     )
 
@@ -430,16 +438,15 @@ class Splat:
                                                 + request.rx_gain
                                                 - request.rx_loss,
                                                 "path_loss": float(path_loss_line),
-                                                "longley_rice_loss": float(
-                                                    longley_rice_loss_line
-                                                ),
+                                                "lr_it_loss_line_type": lr_it_loss_line_type,
+                                                "lr_it_loss": float(lr_it_loss_line),
                                                 "fake_rssi_prediction": float(
                                                     (
                                                         request.tx_power
                                                         + (request.tx_gain - 2.15)
                                                         - request.tx_loss
                                                     )
-                                                    - float(longley_rice_loss_line)
+                                                    - float(lr_it_loss_line)
                                                     + request.rx_gain
                                                     - request.rx_loss
                                                 ),
@@ -536,7 +543,7 @@ class Splat:
                     "-db",
                     str(request.min_dbm),
                     "-kml",
-                    "-olditm" if request.itm_model else "",
+                    "-olditm" if request.itm_mode else "",
                 ]  # flag "olditm" uses the standard ITM model instead of ITWOM, which has produced unrealistic results.
                 logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
 

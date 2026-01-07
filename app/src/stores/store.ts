@@ -32,7 +32,8 @@ const useStore = defineStore("store", {
 					show: false,
 					rx_signal_power: ref<LosSimulatorResponse["rx_signal_power"]>(0),
 					path_loss: ref<LosSimulatorResponse["path_loss"]>(0),
-					longley_rice_loss: ref<LosSimulatorResponse["longley_rice_loss"]>(0),
+					lr_it_loss: ref<LosSimulatorResponse["lr_it_loss"]>(0),
+					lr_it_loss_line_type: ref<LosSimulatorResponse["lr_it_loss_line_type"]>(""),
 					path: {
 						obstructed: ref<LosSimulatorResponse["path"]["obstructed"]>(false),
 						message: ref<LosSimulatorResponse["path"]["message"]>(""),

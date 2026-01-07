@@ -59,7 +59,8 @@ export type LosSimulatorResponse = {
 	};
 	rx_signal_power: number;
 	path_loss: number;
-	longley_rice_loss: number;
+	lr_it_loss_line_type: string;
+	lr_it_loss: number;
 };
 
 export type LosSimulatorResponseUpdated = LosSimulatorResponse & {

@@ -174,6 +174,7 @@ def site_columns(f: str) -> List[str]:
     return [
         f"{f}_mesaured_rssi",
         f"{f}_predicted_rssi",
+        f"{f}_path_loss_rssi",
         f"{f}_los_obstructed",
         f"{f}_fresnel_60_obstructed",
         f"{f}_first_fresnel_obstructed",
@@ -363,7 +364,12 @@ def _md_table_row(cols: List[str]) -> str:
     return "| " + " | ".join(safe) + " |"
 
 
-def _write_stats_comparison_table(out_md, title: str, stats_by_category: Dict[str, Optional[Dict[str, float]]]) -> None:
+def _write_stats_comparison_table(
+    out_md,
+    title: str,
+    stats_by_category: Dict[str, Optional[Dict[str, float]]],
+    pred_label: str,
+) -> None:
     """
     ONE table: rows=metrics, cols=categories
     """
@@ -380,7 +386,7 @@ def _write_stats_comparison_table(out_md, title: str, stats_by_category: Dict[st
 
     metrics = [
         ("Number of samples (N)", "count", "int"),
-        ("Average error / bias (mean of predicted − measured) [dB]", "mean_error", "f3"),
+        (f"Average error / bias (mean of {pred_label} − measured) [dB]", "mean_error", "f3"),
         ("Standard deviation of error [dB]", "std", "f3"),
         ("Mean absolute error [dB]", "mae", "f3"),
         ("Root mean square error [dB]", "rmse", "f3"),
@@ -511,7 +517,7 @@ def save_diff_category_boxplot(
     fig, ax = plt.subplots()
     labels = [label for label, _ in categories]
     data = [vals for _, vals in categories]
-    ax.boxplot(data, labels=labels, showfliers=True)
+    ax.boxplot(data, tick_labels=labels, showfliers=True)
     ax.set_title(title)
     ax.set_ylabel(ylabel)
     fig.tight_layout()
@@ -531,8 +537,14 @@ def format_duration(seconds: float) -> str:
     return f"{sec}s"
 
 
-def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]], per_site: Dict[str, Dict[str, Any]]) -> None:
-    output_md_path = output_dir / "analyze.md"
+def write_stats_and_plots(
+    output_dir: Path,
+    detected_sites: List[Dict[str, Any]],
+    per_site: Dict[str, Dict[str, Any]],
+    pred_label: str,
+    report_name: str = "analyze.md",
+) -> None:
+    output_md_path = output_dir / report_name
     print(f"Wrote report: {output_md_path}", file=sys.stderr)
 
     with open(output_md_path, "w", encoding="utf-8") as out_md:
@@ -556,7 +568,7 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
             "Average error / bias [dB]",
             "90th percentile of absolute error [dB]",
             "Share within ±6 dB",
-            "Pearson correlation (predicted vs measured)",
+            f"Pearson correlation ({pred_label} vs measured)",
         ]
         print(_md_table_row(summary_header), file=out_md)
         print(_md_table_row(["---"] * len(summary_header)), file=out_md)
@@ -618,7 +630,10 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
             print(f"- Failed requests: **{st['failed']}**", file=out_md)
             print(f"- Skipped rows (missing RSSI): **{st['skipped_no_rssi']}**", file=out_md)
             print(f"- Number of samples (N): **{total}**", file=out_md)
-            print(f"- Pearson correlation (predicted vs measured): **{_fmt_f(corr, 3) if corr is not None else ''}**", file=out_md)
+            print(
+                f"- Pearson correlation ({pred_label} vs measured): **{_fmt_f(corr, 3) if corr is not None else ''}**",
+                file=out_md,
+            )
             print("", file=out_md)
 
             print("### Distribution by visibility category", file=out_md)
@@ -641,15 +656,16 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
             }
             _write_stats_comparison_table(
                 out_md,
-                "Error statistics by category (error = predicted − measured)",
+                f"Error statistics by category (error = {pred_label} − measured)",
                 stats_by_category,
+                pred_label,
             )
 
             # Plots
             save_series_plot(
                 st["x"],
                 st["diff"],
-                title=f"{f} gateway: error (predicted - measured) RSSI",
+                title=f"{f} gateway: error ({pred_label} - measured) RSSI",
                 xlabel="Row ID",
                 ylabel="RSSI error (dB)",
                 out_png=str(output_dir / f"{f}_diff.png"),
@@ -668,8 +684,8 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
                 st["rssi"],
                 st["pred"],
                 label1="measured",
-                label2="predicted",
-                title=f"{f} gateway: measured vs predicted RSSI",
+                label2=pred_label,
+                title=f"{f} gateway: measured vs {pred_label} RSSI",
                 xlabel="Row ID",
                 ylabel="RSSI (dBm)",
                 out_png=str(output_dir / f"{f}_val.png"),
@@ -693,10 +709,10 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
             diff_series = []
             for s in detected_sites:
                 f = s["rssi_field"]
-                diff_series.append({"x": per_site[f]["x"], "y": per_site[f]["diff"], "label": f"{f} error"})
+                diff_series.append({"x": per_site[f]["x"], "y": per_site[f]["diff"], "label": f"{f} {pred_label} error"})
             save_multi_series_plot(
                 diff_series,
-                title="All gateways: RSSI error (predicted - measured)",
+                title=f"All gateways: RSSI error ({pred_label} - measured)",
                 xlabel="Row ID",
                 ylabel="RSSI error (dB)",
                 out_png=str(output_dir / "all_sites_diff.png"),
@@ -706,10 +722,10 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
             for s in detected_sites:
                 f = s["rssi_field"]
                 rssi_series.append({"x": per_site[f]["x"], "y": per_site[f]["rssi"], "label": f"{f} measured"})
-                rssi_series.append({"x": per_site[f]["x"], "y": per_site[f]["pred"], "label": f"{f} predicted"})
+                rssi_series.append({"x": per_site[f]["x"], "y": per_site[f]["pred"], "label": f"{f} {pred_label}"})
             save_multi_series_plot(
                 rssi_series,
-                title="All gateways: measured + predicted RSSI",
+                title=f"All gateways: measured + {pred_label} RSSI",
                 xlabel="Row ID",
                 ylabel="RSSI (dBm)",
                 out_png=str(output_dir / "all_sites_rssi.png"),
@@ -746,6 +762,7 @@ def run_los_request(payload: Dict[str, Any]) -> Dict[str, Any]:
         return {
             "ok": True,
             "pred": None,
+            "path_loss_rssi": None,
             "los_obstructed": None,
             "fresnel_60_obstructed": None,
             "first_fresnel_obstructed": None,
@@ -755,6 +772,7 @@ def run_los_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
         "pred": data.get("rx_signal_power"),
+        "path_loss_rssi": data.get("path_loss_rssi"),
         "los_obstructed": normalize_bool(data.get("path", {}).get("obstructed")),
         "first_fresnel_obstructed": normalize_bool(data.get("first_fresnel", {}).get("obstructed")),
         "fresnel_60_obstructed": normalize_bool(
@@ -860,12 +878,13 @@ def main() -> int:
             rows = list(reader)
 
         detected_sites = [s for s in RX_SITES if f"{s['rssi_field']}_mesaured_rssi" in header]
-        per_site = {s["rssi_field"]: new_site_stats() for s in detected_sites}
+        per_site_model = {s["rssi_field"]: new_site_stats() for s in detected_sites}
+        per_site_fpls = {s["rssi_field"]: new_site_stats() for s in detected_sites}
 
-        # ensure obstruction columns exist
+        # ensure prediction + obstruction columns exist
         for s in detected_sites:
             f = s["rssi_field"]
-            for col in site_columns(f)[2:]:
+            for col in site_columns(f):
                 if col not in header:
                     header.append(col)
 
@@ -887,26 +906,37 @@ def main() -> int:
 
                 for s in detected_sites:
                     f = s["rssi_field"]
-                    st = per_site[f]
+                    st_model = per_site_model[f]
+                    st_fpls = per_site_fpls[f]
 
                     rssi = parse_optional_float(row.get(f"{f}_mesaured_rssi"))
                     pred = parse_optional_float(row.get(f"{f}_predicted_rssi"))
+                    path_loss = parse_optional_float(row.get(f"{f}_path_loss_rssi"))
                     if rssi is None:
-                        st["skipped_no_rssi"] += 1
-                        continue
-                    if pred is None:
+                        st_model["skipped_no_rssi"] += 1
+                        st_fpls["skipped_no_rssi"] += 1
                         continue
 
                     los = normalize_bool(row.get(f"{f}_los_obstructed"))
                     f60 = normalize_bool(row.get(f"{f}_fresnel_60_obstructed"))
                     ff = normalize_bool(row.get(f"{f}_first_fresnel_obstructed"))
 
-                    st["completed"] += 1
-                    apply_result_to_stats(per_site, f, x_val, float(rssi), pred, los, f60, ff)
+                    if pred is not None:
+                        st_model["completed"] += 1
+                        apply_result_to_stats(per_site_model, f, x_val, float(rssi), pred, los, f60, ff)
+                    if path_loss is not None:
+                        st_fpls["completed"] += 1
+                        apply_result_to_stats(per_site_fpls, f, x_val, float(rssi), path_loss, los, f60, ff)
 
                 writer.writerow([row.get(col) for col in header])
 
-        write_stats_and_plots(output_dir, detected_sites, per_site)
+        model_dir = output_dir / "model_pred"
+        fpls_dir = output_dir / "fpls_pred"
+        model_dir.mkdir(exist_ok=True)
+        fpls_dir.mkdir(exist_ok=True)
+
+        write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
+        write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
         return 0
 
     # Prediction mode: load rows first to count requests and keep order
@@ -920,7 +950,8 @@ def main() -> int:
             return 1
 
         detected_sites = detect_sites(list(reader.fieldnames))
-        per_site = {s["rssi_field"]: new_site_stats() for s in detected_sites}
+        per_site_model = {s["rssi_field"]: new_site_stats() for s in detected_sites}
+        per_site_fpls = {s["rssi_field"]: new_site_stats() for s in detected_sites}
 
         header = ["row", "lat", "lon"]
         for s in detected_sites:
@@ -943,7 +974,8 @@ def main() -> int:
                 if parse_optional_float(row.get(f)) is not None:
                     total_requests += 1
                 else:
-                    per_site[f]["skipped_no_rssi"] += 1
+                    per_site_model[f]["skipped_no_rssi"] += 1
+                    per_site_fpls[f]["skipped_no_rssi"] += 1
 
             rows.append((idx, lat, lon, row))
 
@@ -974,7 +1006,7 @@ def main() -> int:
         # Parallel
         if args.parallel and args.parallel > 0:
             max_in_flight = args.parallel * max(1, args.queue_mult)
-            results: Dict[int, Dict[str, Tuple[Any, Optional[bool], Optional[bool], Optional[bool]]]] = {}
+            results: Dict[int, Dict[str, Tuple[Any, Any, Optional[bool], Optional[bool], Optional[bool]]]] = {}
 
             def submit_one(executor, tx_lat: float, tx_lon: float, site: Dict[str, Any]):
                 payload = build_payload(tx_lat, tx_lon, site)
@@ -1008,6 +1040,7 @@ def main() -> int:
                         f = site["rssi_field"]
 
                         pred = None
+                        path_loss = None
                         los = None
                         f60 = None
                         ff = None
@@ -1015,20 +1048,27 @@ def main() -> int:
                         try:
                             res = fut.result()
                             if res.get("ok"):
-                                per_site[f]["completed"] += 1
                                 pred = res.get("pred")
+                                path_loss = res.get("path_loss_rssi")
                                 los = res.get("los_obstructed")
                                 f60 = res.get("fresnel_60_obstructed")
                                 ff = res.get("first_fresnel_obstructed")
                             else:
-                                per_site[f]["failed"] += 1
+                                per_site_model[f]["failed"] += 1
+                                per_site_fpls[f]["failed"] += 1
                                 print(f"Row {row_idx} site {f}: LOS failed: {res.get('error','')}", file=sys.stderr)
                         except Exception as exc:
-                            per_site[f]["failed"] += 1
+                            per_site_model[f]["failed"] += 1
+                            per_site_fpls[f]["failed"] += 1
                             print(f"Row {row_idx} site {f}: LOS failed: {exc}", file=sys.stderr)
 
-                        apply_result_to_stats(per_site, f, row_idx, rssi, pred, los, f60, ff)
-                        results.setdefault(row_idx, {})[f] = (pred, los, f60, ff)
+                        if pred is not None:
+                            per_site_model[f]["completed"] += 1
+                            apply_result_to_stats(per_site_model, f, row_idx, rssi, pred, los, f60, ff)
+                        if path_loss is not None:
+                            per_site_fpls[f]["completed"] += 1
+                            apply_result_to_stats(per_site_fpls, f, row_idx, rssi, path_loss, los, f60, ff)
+                        results.setdefault(row_idx, {})[f] = (pred, path_loss, los, f60, ff)
 
                         completed_requests += 1
                         maybe_print_progress()
@@ -1046,8 +1086,8 @@ def main() -> int:
                 for site in detected_sites:
                     f = site["rssi_field"]
                     rssi = parse_optional_float(row.get(f))
-                    pred, los, f60, ff = results.get(row_idx, {}).get(f, (None, None, None, None))
-                    out_row += [rssi, pred, los, f60, ff]
+                    pred, path_loss, los, f60, ff = results.get(row_idx, {}).get(f, (None, None, None, None, None))
+                    out_row += [rssi, pred, path_loss, los, f60, ff]
                 writer.writerow(out_row)
 
         # Sequential
@@ -1058,10 +1098,11 @@ def main() -> int:
                     f = site["rssi_field"]
                     rssi = parse_optional_float(row.get(f))
                     if rssi is None:
-                        out_row += [None, None, None, None, None]
+                        out_row += [None, None, None, None, None, None]
                         continue
 
                     pred = None
+                    path_loss = None
                     los = None
                     f60 = None
                     ff = None
@@ -1069,27 +1110,40 @@ def main() -> int:
                     try:
                         res = run_los_request(build_payload(lat, lon, site))
                         if res.get("ok"):
-                            per_site[f]["completed"] += 1
                             pred = res.get("pred")
+                            path_loss = res.get("path_loss_rssi")
                             los = res.get("los_obstructed")
                             f60 = res.get("fresnel_60_obstructed")
                             ff = res.get("first_fresnel_obstructed")
                         else:
-                            per_site[f]["failed"] += 1
+                            per_site_model[f]["failed"] += 1
+                            per_site_fpls[f]["failed"] += 1
                             print(f"Row {row_idx} site {f}: LOS failed: {res.get('error','')}", file=sys.stderr)
                     except Exception as exc:
-                        per_site[f]["failed"] += 1
+                        per_site_model[f]["failed"] += 1
+                        per_site_fpls[f]["failed"] += 1
                         print(f"Row {row_idx} site {f}: LOS failed: {exc}", file=sys.stderr)
 
-                    apply_result_to_stats(per_site, f, row_idx, float(rssi), pred, los, f60, ff)
-                    out_row += [rssi, pred, los, f60, ff]
+                    if pred is not None:
+                        per_site_model[f]["completed"] += 1
+                        apply_result_to_stats(per_site_model, f, row_idx, float(rssi), pred, los, f60, ff)
+                    if path_loss is not None:
+                        per_site_fpls[f]["completed"] += 1
+                        apply_result_to_stats(per_site_fpls, f, row_idx, float(rssi), path_loss, los, f60, ff)
+                    out_row += [rssi, pred, path_loss, los, f60, ff]
 
                     completed_requests += 1
                     maybe_print_progress()
 
                 writer.writerow(out_row)
 
-    write_stats_and_plots(output_dir, detected_sites, per_site)
+    model_dir = output_dir / "model_pred"
+    fpls_dir = output_dir / "fpls_pred"
+    model_dir.mkdir(exist_ok=True)
+    fpls_dir.mkdir(exist_ok=True)
+
+    write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
+    write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
     print(f"Rows: total_with_coords={len(rows)}", file=sys.stderr)
     return 0
 

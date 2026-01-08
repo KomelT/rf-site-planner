@@ -499,6 +499,27 @@ def save_multi_series_plot(series, title, xlabel, ylabel, out_png, stderr=sys.st
     print(f"Wrote plot: {out_png}", file=stderr)
 
 
+def save_diff_category_boxplot(
+    categories: List[Tuple[str, List[float]]],
+    title: str,
+    ylabel: str,
+    out_png: str,
+    stderr=sys.stderr,
+):
+    if not any(vals for _, vals in categories):
+        return
+    fig, ax = plt.subplots()
+    labels = [label for label, _ in categories]
+    data = [vals for _, vals in categories]
+    ax.boxplot(data, labels=labels, showfliers=True)
+    ax.set_title(title)
+    ax.set_ylabel(ylabel)
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
+    print(f"Wrote plot: {out_png}", file=stderr)
+
+
 def format_duration(seconds: float) -> str:
     seconds = max(0.0, seconds)
     minutes, sec = divmod(int(seconds), 60)
@@ -652,6 +673,19 @@ def write_stats_and_plots(output_dir: Path, detected_sites: List[Dict[str, Any]]
                 xlabel="Row ID",
                 ylabel="RSSI (dBm)",
                 out_png=str(output_dir / f"{f}_val.png"),
+            )
+
+            save_diff_category_boxplot(
+                categories=[
+                    ("All", st["diff_values"]),
+                    ("Clear", st["los_fresnel_clear_diff"]),
+                    ("LOS", st["los_obstructed_diff"]),
+                    ("F60", st["fresnel_60_obstructed_diff"]),
+                    ("FF", st["first_fresnel_obstructed_diff"]),
+                ],
+                title=f"{f} gateway: error by category",
+                ylabel="RSSI error (dB)",
+                out_png=str(output_dir / f"{f}_diff_box.png"),
             )
 
         # Multi-site plots

@@ -3,6 +3,7 @@ import io
 import logging
 import math
 import os
+import shutil
 import subprocess
 import tempfile
 import xml.etree.ElementTree as ET
@@ -90,6 +91,15 @@ class Splat:
         with tempfile.TemporaryDirectory() as tmpdir:
             try:
                 logger.debug(f"Temporary directory created: {tmpdir}")
+
+                self._copy_antenna_pattern_files(request.tx_gain, tmpdir, "tx")
+                self._copy_antenna_pattern_files(request.rx_gain, tmpdir, "rx")
+
+                # request.tx_gain = 0
+                # request.rx_gain = 0
+
+                request.tx_gain = request.tx_gain - 2.15 if request.tx_gain != 0 else 0
+                request.rx_gain = request.rx_gain - 2.15 if request.rx_gain != 0 else 0
 
                 # determine the required terrain tiles
                 required_tiles = Splat._calculate_required_terrain_tiles_los(
@@ -439,34 +449,18 @@ class Splat:
                                                 - request.rx_loss,
                                                 "path_loss": float(path_loss_line),
                                                 "path_loss_rssi": request.tx_power
-                                                + (
-                                                    (request.tx_gain - 2.15)
-                                                    if request.tx_gain != 0
-                                                    else 0
-                                                )
+                                                + request.tx_gain
                                                 - request.tx_loss
                                                 - float(path_loss_line)
-                                                + (
-                                                    (request.rx_gain - 2.15)
-                                                    if request.rx_gain != 0
-                                                    else 0
-                                                )
+                                                + request.rx_gain
                                                 - request.rx_loss,
                                                 "lr_it_loss_line_type": lr_it_loss_line_type,
                                                 "lr_it_loss": float(lr_it_loss_line),
                                                 "lr_it_loss_rssi": request.tx_power
-                                                + (
-                                                    (request.tx_gain - 2.15)
-                                                    if request.tx_gain != 0
-                                                    else 0
-                                                )
+                                                + request.tx_gain
                                                 - request.tx_loss
                                                 - float(lr_it_loss_line)
-                                                + (
-                                                    (request.rx_gain - 2.15)
-                                                    if request.rx_gain != 0
-                                                    else 0
-                                                )
+                                                + request.rx_gain
                                                 - request.rx_loss,
                                             }
                                         )
@@ -474,6 +468,32 @@ class Splat:
             except Exception as e:
                 logger.error(f"Error during LOS prediction: {e}")
                 raise RuntimeError(f"Error during LOS prediction: {e}")
+
+    def _copy_antenna_pattern_files(self, dbi: float, tmpdir: str, prefix: str) -> None:
+        pattern_dir = None
+        if math.isclose(dbi, 5.0, rel_tol=0.0, abs_tol=0.01):
+            pattern_dir = "alfa_868_5dbi"
+        elif math.isclose(dbi, 6.5, rel_tol=0.0, abs_tol=0.01):
+            pattern_dir = "mikrotik_868_6.5dbi"
+
+        if not pattern_dir:
+            return
+
+        base_dir = os.path.join(
+            os.path.dirname(__file__), "..", "antenna_radiation_diagrams", pattern_dir
+        )
+        base_dir = os.path.abspath(base_dir)
+        az_path = os.path.join(base_dir, f"{pattern_dir}.az")
+        el_path = os.path.join(base_dir, f"{pattern_dir}.el")
+
+        if not os.path.isfile(az_path) or not os.path.isfile(el_path):
+            logger.warning(
+                f"Antenna pattern files missing for {pattern_dir}: {az_path}, {el_path}"
+            )
+            return
+
+        shutil.copyfile(az_path, os.path.join(tmpdir, f"{prefix}.az"))
+        shutil.copyfile(el_path, os.path.join(tmpdir, f"{prefix}.el"))
 
     def coverage_prediction(self, request: CoveragePredictionRequest) -> bytes:
         logger.debug(f"Coverage prediction request: {request.json()}")
@@ -822,7 +842,7 @@ class Splat:
         polarization_map = {"horizontal": 0, "vertical": 1}
 
         # Calculate ERP in Watts
-        erp = tx_power + (tx_gain - 2.15) - tx_loss  # in dBm
+        erp = tx_power + tx_gain - tx_loss  # in dBm
         erp_watts = 10 ** ((erp - 30) / 10)  # Convert dBm to Watts
         logger.debug(
             f"Calculated ERP in Watts: {erp_watts:.2f} "

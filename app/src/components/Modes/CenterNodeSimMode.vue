@@ -2,7 +2,7 @@
 	<div>
 		<div class="grid grid-cols-7 gap-2 mt-3 items-end">
 			<div class="col-span-5">
-				<DropDown title="Simulations" :options="simulationsOptions" @update:selected="changeCurrentSimulation"
+				<DropDown title="store.centerNodeSimModeData.simulations" :options="simulationsOptions" @update:selected="changeCurrentSimulation"
 					:deleteBtn="true" @delete:option="removeSimulation" />
 			</div>
 			<div class="col-span-2">
@@ -17,7 +17,7 @@
 				v-model:showSection="showSections.transmitter">
 				<div class="grid grid-cols-7 gap-2 items-end">
 					<div class="col-span-5">
-						<DropDown title="Simulations" :options="simulationTransmitter" @update:selected="changeCurrentTransmitter"
+						<DropDown title="store.centerNodeSimModeData.simulations" :options="simulationTransmitter" @update:selected="changeCurrentTransmitter"
 							:deleteBtn="true" @delete:option="removeTransmitter" />
 					</div>
 					<div class="col-span-2">
@@ -46,7 +46,7 @@
 				v-model:showSection="showSections.receivers">
 				<div class="grid grid-cols-7 gap-2 items-end">
 					<div class="col-span-5">
-						<DropDown title="Simulations" :options="simulationReceivers" @update:selected="changeCurrentReceiver"
+						<DropDown title="store.centerNodeSimModeData.simulations" :options="simulationReceivers" @update:selected="changeCurrentReceiver"
 							:deleteBtn="true" @delete:option="removeReceiver" />
 					</div>
 					<div class="col-span-2">
@@ -86,6 +86,10 @@
 					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
 					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
 				</div>
+				<div class="flex flex-row gap-2 mt-2">
+					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
+					<Toggle title="ITWOM / Longley-Rice" v-model:value="simulation.itm_mode" />
+				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
 				<Button text="Run simulation" @click="runSimulation" :loading="isSimulationRunning"
@@ -119,6 +123,7 @@ import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
 import InputText from "../Inputs/InputText.vue";
+import Toggle from "../Inputs/Toggle.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
 
 const map = useMap();
@@ -139,13 +144,11 @@ const showSections = ref({
 
 const markers: Ref<Marker[]> = ref([]);
 
-const simulations: Ref<CenterNodeSimulatorSite[]> = ref([]);
-
 const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 	() => {
 		return {
-			id: simulations.value.length.toString(),
-			title: `Simulation ${simulations.value.length}`,
+			id: store.centerNodeSimModeData.simulations.length.toString(),
+			title: `Simulation ${store.centerNodeSimModeData.simulations.length}`,
 			frequency_mhz: 868.5,
 			transmitter: [
 				{
@@ -186,40 +189,41 @@ const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 			situation_fraction: 95,
 			time_fraction: 95,
 			high_resolution: false,
+			itm_mode: true,
 		};
 	},
 );
 
-if (simulations.value.length === 0) {
-	simulations.value.push(defaultSimulationValues.value);
+if (store.centerNodeSimModeData.simulations.length === 0) {
+	store.centerNodeSimModeData.simulations.push(defaultSimulationValues.value);
 }
 
-const currentTransmitter = ref(simulations.value[0].transmitter[0]);
+const currentTransmitter = ref(store.centerNodeSimModeData.simulations[0].transmitter[0]);
 
-const currentReceiver = ref(simulations.value[0].recivers[0]);
+const currentReceiver = ref(store.centerNodeSimModeData.simulations[0].recivers[0]);
 
 const simulationsOptions = computed(() => {
-	return simulations.value.map((simulation) => ({
+	return store.centerNodeSimModeData.simulations.map((simulation) => ({
 		id: simulation.id,
 		title: simulation.title,
 	}));
 });
 
 const simulationTransmitter = computed(() => {
-	return simulations.value[0].transmitter.map((reciver) => ({
+	return store.centerNodeSimModeData.simulations[0].transmitter.map((reciver) => ({
 		id: reciver.id,
 		title: reciver.name,
 	}));
 });
 
 const simulationReceivers = computed(() => {
-	return simulations.value[0].recivers.map((reciver) => ({
+	return store.centerNodeSimModeData.simulations[0].recivers.map((reciver) => ({
 		id: reciver.id,
 		title: reciver.name,
 	}));
 });
 
-const simulation: Ref<CenterNodeSimulatorSite> = ref(simulations.value[0]);
+const simulation: Ref<CenterNodeSimulatorSite> = ref(store.centerNodeSimModeData.simulations[0]);
 
 // watch for current simulation changes
 watch(
@@ -382,7 +386,7 @@ function flyToNode(lat: number, lon: number) {
 function flyToSimulationsExtent() {
 	if (!map.isLoaded || !map.map) return;
 
-	const sims = simulations.value;
+	const sims = store.centerNodeSimModeData.simulations;
 	if (!sims.length) return;
 
 	let minLat = 90;
@@ -536,6 +540,7 @@ async function runSimulation() {
 						time_fraction: simulation.value.time_fraction,
 						tx_loss: simulation.value.tx_loss,
 						high_resolution: simulation.value.high_resolution,
+						itm_mode: simulation.value.itm_mode,
 					});
 
 					if (!predictRes.ok)

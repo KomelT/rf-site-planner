@@ -132,6 +132,7 @@ export type CenterNodeSimulatorPayload = {
 	situation_fraction: number;
 	time_fraction: number;
 	high_resolution: boolean;
+	itm_mode: boolean;
 	transmitter: {
 		id: string;
 		name: string;
@@ -168,6 +169,7 @@ export type AreaCenterNodeSimulatorPayload = {
 	situation_fraction: number;
 	time_fraction: number;
 	high_resolution: boolean;
+	itm_mode: boolean;
 	transmitter: {
 		height: number;
 		gain: number;

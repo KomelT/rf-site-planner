@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, watch } from "vue";
 import type {
+	CenterNodeSimulatorSite,
 	CoverageSimulatorPayload,
 	CoverageSimulatorSite,
 	LosSimulatorPayload,
@@ -49,6 +50,7 @@ const useStore = defineStore("store", {
 					options: {},
 					show: false,
 				}),
+				simulations: [] as CenterNodeSimulatorSite[],
 			}),
 			geoJsonLine: ref({
 				type: "LineString" as "LineString" | "MultiLineString",
@@ -162,6 +164,7 @@ const useStore = defineStore("store", {
 			localStorage.setItem("store", JSON.stringify({
 				coverSimModeData: this.coverSimModeData,
 				losSimModeData: this.losSimModeData,
+				centerNodeSimModeData: this.centerNodeSimModeData,
 				mapStyle: this.mapStyle,
 			}));
 		},
@@ -175,7 +178,7 @@ const useStore = defineStore("store", {
 					this.losSimModeData.chart.show = false;
 				}
 				if (parsedData.mapStyle) this.mapStyle = parsedData.mapStyle;
-
+				if (parsedData.centerNodeSimModeData) this.centerNodeSimModeData = parsedData.centerNodeSimModeData;
 			}
 		},
 		watchForChangesAndCommit() {
@@ -183,6 +186,9 @@ const useStore = defineStore("store", {
 				this.updateLocalStorage();
 			});
 			watch(this.losSimModeData, () => {
+				this.updateLocalStorage();
+			});
+			watch(this.centerNodeSimModeData, () => {
 				this.updateLocalStorage();
 			});
 			watch(() => this.mapStyle, () => {

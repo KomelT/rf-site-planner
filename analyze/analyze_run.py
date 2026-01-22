@@ -66,19 +66,21 @@ DEFAULTS = {
     "tx_height": 3.0,
     "tx_power": 27.0,
     "tx_gain": 5.0,
-    "tx_loss": 3.0,
+    "tx_loss": 10,
     "frequency_mhz": 869.525,
-    "clutter_height": 1.0,
+    "clutter_height": 2.0,
     "ground_dielectric": 15.0,
     "ground_conductivity": 0.005,
     "atmosphere_bending": 301.0,
     "radio_climate": "continental_temperate",
     "polarization": "vertical",
-    "situation_fraction": 50.0,
-    "time_fraction": 90.0,
+    "situation_fraction": 99,
+    "time_fraction": 99,
     "high_resolution": True,
     "itm_mode": True,
 }
+
+DISTANCE_BIN_KM_DEFAULT = 1.0
 
 # ---------------------------------------------------------------------------
 # HTTP helpers
@@ -196,10 +198,12 @@ def new_site_stats() -> Dict[str, Any]:
         "pred": [],
         "diff": [],
         "diff_values": [],
+        "dist_km": [],
         "los_fresnel_clear_x": [],
         "los_fresnel_clear_diff": [],
         "los_obstructed_x": [],
         "los_obstructed_diff": [],
+        "los_obstructed_dist": [],
         "fresnel_60_obstructed_x": [],
         "fresnel_60_obstructed_diff": [],
         "first_fresnel_obstructed_x": [],
@@ -223,6 +227,7 @@ def apply_result_to_stats(
     per_site: Dict[str, Dict[str, Any]],
     site_field: str,
     idx: int,
+    dist_km: float,
     rssi: float,
     pred: Any,
     los_obstructed: Optional[bool],
@@ -241,10 +246,12 @@ def apply_result_to_stats(
     st["rssi"].append(rssi)
     st["pred"].append(pred_f)
     st["diff"].append(diff)
+    st["dist_km"].append(dist_km)
 
     if los_obstructed is True:
         st["los_obstructed_x"].append(idx)
         st["los_obstructed_diff"].append(diff)
+        st["los_obstructed_dist"].append(dist_km)
     elif fresnel_60_obstructed is True:
         st["fresnel_60_obstructed_x"].append(idx)
         st["fresnel_60_obstructed_diff"].append(diff)
@@ -357,6 +364,22 @@ def _fmt_pct(x: Optional[float], nd: int = 1) -> str:
     if isinstance(x, float) and (math.isnan(x) or math.isinf(x)):
         return ""
     return f"{x * 100:.{nd}f}%"
+
+
+def _fmt_km_val(x: float) -> str:
+    if abs(x - round(x)) < 1e-6:
+        return str(int(round(x)))
+    return f"{x:.1f}"
+
+
+def _distance_bin_label(bin_idx: int, bin_km: float) -> str:
+    start = bin_idx * bin_km
+    end = start + bin_km
+    return f"{_fmt_km_val(start)}-{_fmt_km_val(end)} km"
+
+
+def _distance_bin_tag(bin_km: float) -> str:
+    return f"{_fmt_km_val(bin_km)}km"
 
 
 def _md_table_row(cols: List[str]) -> str:
@@ -505,11 +528,76 @@ def save_multi_series_plot(series, title, xlabel, ylabel, out_png, stderr=sys.st
     print(f"Wrote plot: {out_png}", file=stderr)
 
 
+def _linreg(xs: List[float], ys: List[float]) -> Optional[Tuple[float, float, float]]:
+    n = len(xs)
+    if n < 2 or n != len(ys):
+        return None
+    mx = sum(xs) / n
+    my = sum(ys) / n
+    ss_xx = 0.0
+    ss_xy = 0.0
+    for x, y in zip(xs, ys):
+        dx = x - mx
+        ss_xx += dx * dx
+        ss_xy += dx * (y - my)
+    if ss_xx == 0.0:
+        return None
+    m = ss_xy / ss_xx
+    b = my - m * mx
+    ss_tot = sum((y - my) ** 2 for y in ys)
+    ss_res = sum((y - (m * x + b)) ** 2 for x, y in zip(xs, ys))
+    r2 = 1.0 - (ss_res / ss_tot) if ss_tot > 0 else 0.0
+    return m, b, r2
+
+
+def save_scatter_with_linreg(
+    xs: List[float],
+    ys: List[float],
+    title: str,
+    xlabel: str,
+    ylabel: str,
+    out_png: str,
+    stderr=sys.stderr,
+):
+    if not xs or not ys or len(xs) != len(ys):
+        return
+    fig, ax = plt.subplots()
+    ax.scatter(xs, ys, s=16, alpha=0.7)
+    reg = _linreg(xs, ys)
+    if reg:
+        m, b, r2 = reg
+        x_min = min(xs)
+        x_max = max(xs)
+        xs_line = [x_min, x_max]
+        ys_line = [m * x_min + b, m * x_max + b]
+        ax.plot(xs_line, ys_line, color="red", linewidth=1.5)
+        ax.text(
+            0.02,
+            0.98,
+            f"y = {m:.3f}x + {b:.3f}\nR² = {r2:.3f}",
+            transform=ax.transAxes,
+            ha="left",
+            va="top",
+            fontsize=9,
+            bbox={"facecolor": "white", "alpha": 0.6, "edgecolor": "none"},
+        )
+    ax.set_title(title)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    fig.tight_layout()
+    fig.savefig(out_png, dpi=150)
+    plt.close(fig)
+    print(f"Wrote plot: {out_png}", file=stderr)
+
+
 def save_diff_category_boxplot(
     categories: List[Tuple[str, List[float]]],
     title: str,
     ylabel: str,
     out_png: str,
+    title_size: Optional[int] = None,
+    label_size: Optional[int] = None,
+    tick_size: Optional[int] = None,
     stderr=sys.stderr,
 ):
     if not any(vals for _, vals in categories):
@@ -518,12 +606,65 @@ def save_diff_category_boxplot(
     labels = [label for label, _ in categories]
     data = [vals for _, vals in categories]
     ax.boxplot(data, tick_labels=labels, showfliers=True)
-    ax.set_title(title)
-    ax.set_ylabel(ylabel)
+    if title_size is None:
+        ax.set_title(title)
+    else:
+        ax.set_title(title, fontsize=title_size)
+    if label_size is None:
+        ax.set_ylabel(ylabel)
+    else:
+        ax.set_ylabel(ylabel, fontsize=label_size)
+    if tick_size is not None:
+        ax.tick_params(axis="both", labelsize=tick_size)
     fig.tight_layout()
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
     print(f"Wrote plot: {out_png}", file=stderr)
+
+
+def save_distance_boxplot(
+    dist_km: List[float],
+    diffs: List[float],
+    bin_km: float,
+    title: str,
+    ylabel: str,
+    out_png: str,
+    stderr=sys.stderr,
+):
+    if not dist_km or not diffs:
+        return
+    if bin_km <= 0:
+        return
+
+    bins: Dict[int, List[float]] = {}
+    for d, diff in zip(dist_km, diffs):
+        if d is None:
+            continue
+        bin_idx = int(math.floor(d / bin_km))
+        bins.setdefault(bin_idx, []).append(diff)
+
+    categories = [(_distance_bin_label(idx, bin_km), bins[idx]) for idx in sorted(bins.keys())]
+    save_diff_category_boxplot(
+        categories,
+        title,
+        ylabel,
+        out_png,
+        title_size=10,
+        label_size=9,
+        tick_size=8,
+        stderr=stderr,
+    )
+
+
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    r = 6371.0088
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    dphi = math.radians(lat2 - lat1)
+    dlambda = math.radians(lon2 - lon1)
+
+    a = math.sin(dphi / 2.0) ** 2 + math.cos(phi1) * math.cos(phi2) * math.sin(dlambda / 2.0) ** 2
+    return 2.0 * r * math.asin(math.sqrt(a))
 
 
 def format_duration(seconds: float) -> str:
@@ -564,6 +705,7 @@ def write_stats_and_plots(
             "Skipped rows (missing RSSI)",
             "Number of samples (N)",
             "Mean absolute error [dB]",
+            "Standard deviation of error [dB]",
             "Root mean square error [dB]",
             "Average error / bias [dB]",
             "90th percentile of absolute error [dB]",
@@ -581,6 +723,7 @@ def write_stats_and_plots(
 
             n = int(stats_all["count"]) if stats_all else 0
             mae = _fmt_f(stats_all["mae"]) if stats_all else ""
+            std = _fmt_f(stats_all["std"]) if stats_all else ""
             rmse = _fmt_f(stats_all["rmse"]) if stats_all else ""
             bias = _fmt_f(stats_all["mean_error"]) if stats_all else ""
             p90 = _fmt_f(stats_all["p90_abs"]) if stats_all else ""
@@ -594,6 +737,7 @@ def write_stats_and_plots(
                 str(st["skipped_no_rssi"]),
                 str(n),
                 mae,
+                std,
                 rmse,
                 bias,
                 p90,
@@ -732,6 +876,52 @@ def write_stats_and_plots(
             )
 
 
+def write_distance_boxplots(
+    output_dir: Path,
+    detected_sites: List[Dict[str, Any]],
+    per_site: Dict[str, Dict[str, Any]],
+    pred_label: str,
+    bin_km: float,
+) -> None:
+    if bin_km <= 0:
+        return
+    output_dir.mkdir(exist_ok=True)
+    bin_tag = _distance_bin_tag(bin_km)
+    for s in detected_sites:
+        f = s["rssi_field"]
+        st = per_site[f]
+        out_png = output_dir / f"{f}_diff_box_by_{bin_tag}.png"
+        save_distance_boxplot(
+            st["dist_km"],
+            st["diff_values"],
+            bin_km,
+            title=f"{f} gateway: {pred_label} error by distance ({bin_tag} bins)",
+            ylabel="RSSI error (dB)",
+            out_png=str(out_png),
+        )
+
+
+def write_non_los_length_scatter(
+    output_dir: Path,
+    detected_sites: List[Dict[str, Any]],
+    per_site: Dict[str, Dict[str, Any]],
+    pred_label: str,
+) -> None:
+    output_dir.mkdir(exist_ok=True)
+    for s in detected_sites:
+        f = s["rssi_field"]
+        st = per_site[f]
+        out_png = output_dir / f"{f}_diff_vs_length_non_los.png"
+        save_scatter_with_linreg(
+            st["los_obstructed_dist"],
+            st["los_obstructed_diff"],
+            title=f"{f} gateway: {pred_label} error vs link length (non-LOS)",
+            xlabel="Link length (km)",
+            ylabel="RSSI error (dB)",
+            out_png=str(out_png),
+        )
+
+
 # ---------------------------------------------------------------------------
 # LOS request
 # ---------------------------------------------------------------------------
@@ -835,8 +1025,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("input_path", help="Folder containing a single CSV (or a CSV path)")
     p.add_argument("--geojson-only", "-g", action="store_true", help="Only generate GeoJSON and skip LOS requests")
     p.add_argument("--no-prediction", "-n", action="store_true", help="Skip API calls and rebuild stats/plots from analyze.csv")
-    p.add_argument("--parallel", "-p", type=int, default=6, help="Number of parallel LOS requests (0 = sequential)")
+    p.add_argument("--parallel", "-p", type=int, default=20, help="Number of parallel LOS requests (0 = sequential)")
     p.add_argument("--queue-mult", type=int, default=4, help="Max in-flight = parallel * queue_mult")
+    p.add_argument(
+        "--distance-bin-km",
+        type=float,
+        default=DISTANCE_BIN_KM_DEFAULT,
+        help="Distance bin size in km for diff boxplots (default: 1.0)",
+    )
     return p.parse_args()
 
 
@@ -847,6 +1043,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.distance_bin_km <= 0:
+        print("--distance-bin-km must be > 0", file=sys.stderr)
+        return 1
 
     csv_path = resolve_csv_path(args.input_path)
     output_dir = csv_path.parent
@@ -908,6 +1107,7 @@ def main() -> int:
                     f = s["rssi_field"]
                     st_model = per_site_model[f]
                     st_fpls = per_site_fpls[f]
+                    dist_km = haversine_km(lat, lon, float(s["lat"]), float(s["lon"]))
 
                     rssi = parse_optional_float(row.get(f"{f}_mesaured_rssi"))
                     pred = parse_optional_float(row.get(f"{f}_predicted_rssi"))
@@ -923,10 +1123,10 @@ def main() -> int:
 
                     if pred is not None:
                         st_model["completed"] += 1
-                        apply_result_to_stats(per_site_model, f, x_val, float(rssi), pred, los, f60, ff)
+                        apply_result_to_stats(per_site_model, f, x_val, dist_km, float(rssi), pred, los, f60, ff)
                     if path_loss is not None:
                         st_fpls["completed"] += 1
-                        apply_result_to_stats(per_site_fpls, f, x_val, float(rssi), path_loss, los, f60, ff)
+                        apply_result_to_stats(per_site_fpls, f, x_val, dist_km, float(rssi), path_loss, los, f60, ff)
 
                 writer.writerow([row.get(col) for col in header])
 
@@ -937,6 +1137,23 @@ def main() -> int:
 
         write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
         write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
+
+        model_len_dir = output_dir / "model_pred_length"
+        write_distance_boxplots(
+            model_len_dir,
+            detected_sites,
+            per_site_model,
+            pred_label="predicted",
+            bin_km=args.distance_bin_km,
+        )
+
+        model_nlos_len_dir = output_dir / "model_pred_length_non_los"
+        write_non_los_length_scatter(
+            model_nlos_len_dir,
+            detected_sites,
+            per_site_model,
+            pred_label="predicted",
+        )
         return 0
 
     # Prediction mode: load rows first to count requests and keep order
@@ -1038,6 +1255,7 @@ def main() -> int:
                     for fut in done:
                         row_idx, lat, lon, row, site, rssi = in_flight.pop(fut)
                         f = site["rssi_field"]
+                        dist_km = haversine_km(lat, lon, float(site["lat"]), float(site["lon"]))
 
                         pred = None
                         path_loss = None
@@ -1064,10 +1282,10 @@ def main() -> int:
 
                         if pred is not None:
                             per_site_model[f]["completed"] += 1
-                            apply_result_to_stats(per_site_model, f, row_idx, rssi, pred, los, f60, ff)
+                            apply_result_to_stats(per_site_model, f, row_idx, dist_km, rssi, pred, los, f60, ff)
                         if path_loss is not None:
                             per_site_fpls[f]["completed"] += 1
-                            apply_result_to_stats(per_site_fpls, f, row_idx, rssi, path_loss, los, f60, ff)
+                            apply_result_to_stats(per_site_fpls, f, row_idx, dist_km, rssi, path_loss, los, f60, ff)
                         results.setdefault(row_idx, {})[f] = (pred, path_loss, los, f60, ff)
 
                         completed_requests += 1
@@ -1100,6 +1318,7 @@ def main() -> int:
                     if rssi is None:
                         out_row += [None, None, None, None, None, None]
                         continue
+                    dist_km = haversine_km(lat, lon, float(site["lat"]), float(site["lon"]))
 
                     pred = None
                     path_loss = None
@@ -1126,10 +1345,10 @@ def main() -> int:
 
                     if pred is not None:
                         per_site_model[f]["completed"] += 1
-                        apply_result_to_stats(per_site_model, f, row_idx, float(rssi), pred, los, f60, ff)
+                        apply_result_to_stats(per_site_model, f, row_idx, dist_km, float(rssi), pred, los, f60, ff)
                     if path_loss is not None:
                         per_site_fpls[f]["completed"] += 1
-                        apply_result_to_stats(per_site_fpls, f, row_idx, float(rssi), path_loss, los, f60, ff)
+                        apply_result_to_stats(per_site_fpls, f, row_idx, dist_km, float(rssi), path_loss, los, f60, ff)
                     out_row += [rssi, pred, path_loss, los, f60, ff]
 
                     completed_requests += 1
@@ -1144,6 +1363,23 @@ def main() -> int:
 
     write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
     write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
+
+    model_len_dir = output_dir / "model_pred_length"
+    write_distance_boxplots(
+        model_len_dir,
+        detected_sites,
+        per_site_model,
+        pred_label="predicted",
+        bin_km=args.distance_bin_km,
+    )
+
+    model_nlos_len_dir = output_dir / "model_pred_length_non_los"
+    write_non_los_length_scatter(
+        model_nlos_len_dir,
+        detected_sites,
+        per_site_model,
+        pred_label="predicted",
+    )
     print(f"Rows: total_with_coords={len(rows)}", file=sys.stderr)
     return 0
 

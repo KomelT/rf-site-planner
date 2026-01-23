@@ -1,6 +1,6 @@
 # RF Site Planner – RSSI analysis
 
-- Generated: 2026-01-22 12:57:04
+- Generated: 2026-01-23 12:42:37
 
 ## Summary per gateway
 

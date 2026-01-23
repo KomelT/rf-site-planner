@@ -908,9 +908,15 @@ def write_non_los_length_scatter(
     pred_label: str,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
+    summary_rows = []
     for s in detected_sites:
         f = s["rssi_field"]
         st = per_site[f]
+        reg = _linreg(st["los_obstructed_dist"], st["los_obstructed_diff"])
+        if reg:
+            m, b, r2 = reg
+        else:
+            m = b = r2 = None
         out_png = output_dir / f"{f}_diff_vs_length_non_los.png"
         save_scatter_with_linreg(
             st["los_obstructed_dist"],
@@ -920,6 +926,36 @@ def write_non_los_length_scatter(
             ylabel="RSSI error (dB)",
             out_png=str(out_png),
         )
+        summary_rows.append(
+            {
+                "site": f,
+                "count": len(st["los_obstructed_diff"]),
+                "slope_db_per_km": m,
+                "intercept_db": b,
+                "r2": r2,
+            }
+        )
+
+    summary_path = output_dir / "summary.md"
+    with open(summary_path, "w", encoding="utf-8") as out_md:
+        print(f"# Non-LOS error vs link length ({pred_label})", file=out_md)
+        print("", file=out_md)
+        header = ["Gateway (site id)", "N", "Slope [dB/km]", "Intercept [dB]", "R²"]
+        print(_md_table_row(header), file=out_md)
+        print(_md_table_row(["---"] * len(header)), file=out_md)
+        for row in summary_rows:
+            print(
+                _md_table_row(
+                    [
+                        row["site"],
+                        str(int(row["count"])),
+                        _fmt_f(row["slope_db_per_km"], 4) if row["slope_db_per_km"] is not None else "",
+                        _fmt_f(row["intercept_db"], 3) if row["intercept_db"] is not None else "",
+                        _fmt_f(row["r2"], 3) if row["r2"] is not None else "",
+                    ]
+                ),
+                file=out_md,
+            )
 
 
 # ---------------------------------------------------------------------------

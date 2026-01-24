@@ -24,7 +24,7 @@ RX_SITES = [
         "rssi_field": "!75f19024",
         "rx_height": 15.0,
         "rx_gain": 6.5,
-        "rx_loss": 0.0,
+        "rx_loss": 5.0,
     },
     {
         "name": "SV. Katarina",
@@ -239,7 +239,7 @@ def apply_result_to_stats(
     if pred_f is None:
         return
 
-    diff = pred_f - rssi
+    diff = rssi - pred_f
 
     st["diff_values"].append(diff)
     st["x"].append(idx)
@@ -809,9 +809,9 @@ def write_stats_and_plots(
             save_series_plot(
                 st["x"],
                 st["diff"],
-                title=f"{f} gateway: error ({pred_label} - measured) RSSI",
+                title=f"{f} - error ({pred_label} - measured) RSSI",
                 xlabel="Row ID",
-                ylabel="RSSI error (dB)",
+                ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / f"{f}_diff.png"),
                 green_x=st["los_fresnel_clear_x"],
                 green_y=st["los_fresnel_clear_diff"],
@@ -829,7 +829,7 @@ def write_stats_and_plots(
                 st["pred"],
                 label1="measured",
                 label2=pred_label,
-                title=f"{f} gateway: measured vs {pred_label} RSSI",
+                title=f"{f} gw: measured vs {pred_label} RSSI",
                 xlabel="Row ID",
                 ylabel="RSSI (dBm)",
                 out_png=str(output_dir / f"{f}_val.png"),
@@ -837,14 +837,14 @@ def write_stats_and_plots(
 
             save_diff_category_boxplot(
                 categories=[
-                    ("All", st["diff_values"]),
-                    ("Clear", st["los_fresnel_clear_diff"]),
-                    ("LOS", st["los_obstructed_diff"]),
-                    ("F60", st["fresnel_60_obstructed_diff"]),
-                    ("FF", st["first_fresnel_obstructed_diff"]),
+                    ("Vsi paketi", st["diff_values"]),
+                    ("LOS", st["los_fresnel_clear_diff"]),
+                    ("NLOS", st["los_obstructed_diff"]),
+                    ("NF60", st["fresnel_60_obstructed_diff"]),
+                    ("NFF", st["first_fresnel_obstructed_diff"]),
                 ],
-                title=f"{f} gateway: error by category",
-                ylabel="RSSI error (dB)",
+                title=f"{f} - napake glede na vidnost (meritev - simulacija)",
+                ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / f"{f}_diff_box.png"),
             )
 
@@ -856,9 +856,9 @@ def write_stats_and_plots(
                 diff_series.append({"x": per_site[f]["x"], "y": per_site[f]["diff"], "label": f"{f} {pred_label} error"})
             save_multi_series_plot(
                 diff_series,
-                title=f"All gateways: RSSI error ({pred_label} - measured)",
+                title=f"All gateways: RSSI napaka ({pred_label} - measured)",
                 xlabel="Row ID",
-                ylabel="RSSI error (dB)",
+                ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / "all_sites_diff.png"),
             )
 
@@ -896,7 +896,7 @@ def write_distance_boxplots(
             st["diff_values"],
             bin_km,
             title=f"{f} gateway: {pred_label} error by distance ({bin_tag} bins)",
-            ylabel="RSSI error (dB)",
+            ylabel="RSSI napaka (dB)",
             out_png=str(out_png),
         )
 
@@ -923,7 +923,7 @@ def write_non_los_length_scatter(
             st["los_obstructed_diff"],
             title=f"{f} gateway: {pred_label} error vs link length (non-LOS)",
             xlabel="Link length (km)",
-            ylabel="RSSI error (dB)",
+            ylabel="RSSI napaka (dB)",
             out_png=str(out_png),
         )
         summary_rows.append(

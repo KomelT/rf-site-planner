@@ -1,6 +1,6 @@
 <template>
 	<MglCustomControl v-if="store.centerNodeSimModeData.table.show" :position="props.position" class="maplibregl-ctrl maplibregl-ctrl-group ml-2! sm:ml-0! w-auto">
-		<div :class="['bg-white border rounded shadow-lg sm:min-w-96', hide ? 'border-gray-100' : 'border-gray-300']">
+		<div :class="['bg-white border rounded shadow-lg', hide ? 'border-gray-100' : 'border-gray-300']">
 			<Button v-if="hide" text="Show" @click="hide = false" class="py-1! w-auto! px-2! m-2 bg-orange-400!" />
 			<div v-if="!hide" class="">
 				<div class="grid grid-cols-7 gap-2 m-3 items-end">
@@ -121,7 +121,7 @@ watch(
 					const value = newData.find(
 						(val) => val.tx_id === txId && val.rx_id === colId,
 					);
-					row.push(value ? `${value.rx_signal_power} dBm` : "N/A");
+					row.push(value ? `${value.rx_signal_power.toFixed(2)} dBm` : "N/A");
 				}
 				return row;
 			});

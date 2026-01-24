@@ -153,7 +153,7 @@ const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 			transmitter: [
 				{
 					id: randomHexColor(),
-					name: "Transmitter 1",
+					name: "TX 1",
 					lat: 45.8547367972,
 					lon: 13.7261620811,
 					height: 2,
@@ -164,7 +164,7 @@ const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 			recivers: [
 				{
 					id: randomHexColor(),
-					name: "Receiver 1",
+					name: "RX 1",
 					lat: 45.8481696198,
 					lon: 13.7311562054,
 					height: 2,
@@ -172,7 +172,7 @@ const defaultSimulationValues: ComputedRef<CenterNodeSimulatorSite> = computed(
 				},
 				{
 					id: randomHexColor(),
-					name: "Receiver 2",
+					name: "RX 2",
 					lat: 45.8467440547,
 					lon: 13.72315913,
 					height: 2,
@@ -464,7 +464,7 @@ function removeTransmitter(id: string) {
 function addTransmitter() {
 	simulation.value.transmitter.push({
 		id: randomHexColor(),
-		name: `Transmitter ${simulation.value.transmitter.length + 1}`,
+		name: `TX ${simulation.value.transmitter.length + 1}`,
 		lat: 45.8547367972,
 		lon: 13.7261620811,
 		gain: 2,
@@ -487,7 +487,7 @@ function removeReceiver(id: string) {
 function addReceiver() {
 	simulation.value.recivers.push({
 		id: randomHexColor(),
-		name: `Receiver ${simulation.value.recivers.length + 1}`,
+		name: `RX ${simulation.value.recivers.length + 1}`,
 		lat: 45.8467440547,
 		lon: 13.72315913,
 		gain: 2,

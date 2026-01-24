@@ -213,287 +213,107 @@ class Splat:
 
                 # self._save_all_files_from_tmpdir(tmpdir)
 
-                with open(os.path.join(tmpdir, "profile.gp"), "rb") as profile_file:
-                    with open(
-                        os.path.join(tmpdir, "curvature.gp"), "rb"
-                    ) as curvature_file:
-                        with open(
-                            os.path.join(tmpdir, "fresnel.gp"), "rb"
-                        ) as fresnel_file:
-                            with open(
-                                os.path.join(tmpdir, "fresnel_pt_6.gp"), "rb"
-                            ) as fresnel_pt_6_file:
-                                with open(
-                                    os.path.join(tmpdir, "reference.gp"), "rb"
-                                ) as reference_file:
-                                    with open(
-                                        os.path.join(tmpdir, "tx-to-rx.txt"), "rb"
-                                    ) as tx_to_rx_file:
-                                        profile_data = profile_file.read()
-                                        curvature_data = curvature_file.read()
-                                        fresnel_data = fresnel_file.read()
-                                        reference_data = reference_file.read()
-                                        tx_to_rx_data = tx_to_rx_file.read()
+                files = {
+                    "profile": "profile.gp",
+                    "curvature": "curvature.gp",
+                    "fresnel": "fresnel.gp",
+                    "fresnel_pt_6": "fresnel_pt_6.gp",
+                    "reference": "reference.gp",
+                    "tx_to_rx": "tx-to-rx.txt",
+                }
 
-                                        profile_lines = profile_data.decode(
-                                            "utf-8"
-                                        ).splitlines()
-                                        curvature_lines = curvature_data.decode(
-                                            "utf-8"
-                                        ).splitlines()
-                                        fresnel_lines = fresnel_data.decode(
-                                            "utf-8"
-                                        ).splitlines()
-                                        reference_lines = reference_data.decode(
-                                            "utf-8"
-                                        ).splitlines()
+                data = {
+                    k: self._read_bytes(os.path.join(tmpdir, v)) for k, v in files.items()
+                }
 
-                                        distance = []
-                                        profile = []
-                                        curvature = []
-                                        fresnel = []
-                                        fresnel_pt_6 = []
-                                        reference = []
+                profile_lines = self._decode_lines(data["profile"])
+                curvature_lines = self._decode_lines(data["curvature"])
+                fresnel_lines = self._decode_lines(data["fresnel"])
+                fresnel_pt_6_lines = self._decode_lines(data["fresnel_pt_6"])
+                reference_lines = self._decode_lines(data["reference"])
 
-                                        for line in profile_lines:
-                                            try:
-                                                d, p = line.split("\t")
-                                                distance.append(float(d))
-                                                profile.append(float(p))
-                                            except ValueError:
-                                                logger.warning(
-                                                    f"Skipping invalid line in profile: {line}"
-                                                )
+                distance, profile = self._parse_gp_xy_lines(
+                    profile_lines, logger=logger, label="profile.gp"
+                )
+                _, curvature = self._parse_gp_xy_lines(
+                    curvature_lines, logger=logger, label="curvature.gp"
+                )
+                _, fresnel = self._parse_gp_xy_lines(
+                    fresnel_lines, logger=logger, label="fresnel.gp"
+                )
+                _, fresnel_pt_6 = self._parse_gp_xy_lines(
+                    fresnel_pt_6_lines, logger=logger, label="fresnel_pt_6.gp"
+                )
+                _, reference = self._parse_gp_xy_lines(
+                    reference_lines, logger=logger, label="reference.gp"
+                )
 
-                                        for line in curvature_lines:
-                                            try:
-                                                d, c = line.split("\t")
-                                                curvature.append(float(c))
-                                            except ValueError:
-                                                logger.warning(
-                                                    f"Skipping invalid line in curvature: {line}"
-                                                )
+                report = self._parse_tx_to_rx_report(data["tx_to_rx"])
 
-                                        for line in fresnel_lines:
-                                            try:
-                                                d, f = line.split("\t")
-                                                fresnel.append(float(f))
-                                            except ValueError:
-                                                logger.warning(
-                                                    f"Skipping invalid line in fresnel: {line}"
-                                                )
+                sig = report["signal_power_level_at_rx"]
+                fspl = report["free_space_path_loss"]
+                lr_loss = report["lr_loss"]
 
-                                        for line in fresnel_pt_6_file:
-                                            try:
-                                                d, f = line.decode("utf-8").split("\t")
-                                                fresnel_pt_6.append(float(f))
-                                            except ValueError:
-                                                logger.warning(
-                                                    f"Skipping invalid line in fresnel_pt_6: {line}"
-                                                )
+                rx_signal_power = None
+                path_loss_rssi = None
+                lr_it_loss_rssi = None
 
-                                        for line in reference_lines:
-                                            try:
-                                                d, r = line.split("\t")
-                                                reference.append(float(r))
-                                            except ValueError:
-                                                logger.warning(
-                                                    f"Skipping invalid line in reference: {line}"
-                                                )
+                if sig is not None:
+                    rx_signal_power = sig + request.rx_gain - request.rx_loss
 
-                                        tx_to_rx_lines = tx_to_rx_data.splitlines()
-                                        path_obstruction = True
-                                        path_message = ""
-                                        path_obstructions = []
+                if fspl is not None:
+                    path_loss_rssi = (
+                        request.tx_power
+                        + request.tx_gain
+                        - request.tx_loss
+                        - fspl
+                        + request.rx_gain
+                        - request.rx_loss
+                    )
 
-                                        first_fresnel_obstruction = True
-                                        first_fresnel_message = ""
+                if lr_loss is not None:
+                    lr_it_loss_rssi = (
+                        request.tx_power
+                        + request.tx_gain
+                        - request.tx_loss
+                        - lr_loss
+                        + request.rx_gain
+                        - request.rx_loss
+                    )
 
-                                        fresnel_60_obstruction = True
-                                        fresnel_60_message = ""
-
-                                        for i, line in enumerate(tx_to_rx_lines):
-                                            if (
-                                                b"No obstructions to LOS path due to terrain were detected by SPLAT!"
-                                                in line
-                                            ):
-                                                path_obstruction = False
-                                            elif (
-                                                b"The first Fresnel zone is clear."
-                                                in line
-                                            ):
-                                                first_fresnel_obstruction = False
-                                            elif (
-                                                b"60% of the first Fresnel zone is clear."
-                                                in line
-                                            ):
-                                                fresnel_60_obstruction = False
-                                            elif (
-                                                b"Between rx and tx, SPLAT! detected obstructions at:"
-                                                in line
-                                            ):
-                                                for line in tx_to_rx_lines[i + 2 :]:
-                                                    if line.strip() == b"":
-                                                        break
-
-                                                    decoded_parts = [
-                                                        part.decode("utf-8").strip()
-                                                        for part in line.strip().split(
-                                                            b", "
-                                                        )
-                                                    ]
-
-                                                    decoded_parts = [
-                                                        float(part.split(" ")[0])
-                                                        for part in decoded_parts
-                                                        if part
-                                                    ]
-                                                    if len(decoded_parts) < 2:
-                                                        continue
-
-                                                    val = decoded_parts[1]
-                                                    original_longitude = (
-                                                        360 - val if val > 180 else -val
-                                                    )
-                                                    decoded_parts[1] = (
-                                                        original_longitude
-                                                    )
-
-                                                    path_obstructions.append(
-                                                        decoded_parts
-                                                    )
-
-                                            elif (
-                                                b"to clear all obstructions detected by SPLAT!"
-                                                in line
-                                            ):
-                                                if i + 1 < len(tx_to_rx_lines):
-                                                    path_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-
-                                            elif (
-                                                b"to clear the first Fresnel zone."
-                                                in line
-                                            ):
-                                                if i + 1 < len(tx_to_rx_lines):
-                                                    first_fresnel_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-                                            elif (
-                                                b"to clear 60% of the first Fresnel zone."
-                                                in line
-                                            ):
-                                                if i + 1 < len(tx_to_rx_lines):
-                                                    fresnel_60_message = f"{tx_to_rx_lines[i + 1].strip()} {line.strip()}"
-
-                                        # extract numbers
-                                        signal_power_line = ""
-                                        path_loss_line = ""
-                                        lr_it_loss_line = ""
-                                        lr_it_loss_line_type = ""
-
-                                        for line in tx_to_rx_lines:
-                                            if b"Signal power level at rx:" in line:
-                                                parts = line.strip().split(b" ")
-                                                if len(parts) > 5:
-                                                    signal_power_line = (
-                                                        parts[5].strip().decode("utf-8")
-                                                    )
-                                            if b"Free space path loss:" in line:
-                                                parts = line.strip().split(b" ")
-                                                if len(parts) > 4:
-                                                    path_loss_line = (
-                                                        parts[4].strip().decode("utf-8")
-                                                    )
-                                            if b"Longley-Rice path loss:" in line:
-                                                parts = line.strip().split(b" ")
-                                                if len(parts) > 3:
-                                                    lr_it_loss_line_type = (
-                                                        "Longley-Rice path loss"
-                                                    )
-                                                    lr_it_loss_line = (
-                                                        parts[3].strip().decode("utf-8")
-                                                    )
-                                            if b"ITWOM Version 3.0 path loss:" in line:
-                                                parts = line.strip().split(b" ")
-                                                if len(parts) > 5:
-                                                    lr_it_loss_line_type = (
-                                                        "ITWOM Version 3.0 path loss"
-                                                    )
-                                                    lr_it_loss_line = (
-                                                        parts[5].strip().decode("utf-8")
-                                                    )
-
-                                        return dumps(
-                                            {
-                                                "distance": distance,
-                                                "profile": profile,
-                                                "curvature": curvature,
-                                                "fresnel": fresnel,
-                                                "fresnel_pt_6": fresnel_pt_6,
-                                                "reference": reference,
-                                                "path": {
-                                                    "obstructed": path_obstruction,
-                                                    "message": path_message,
-                                                    "obstructions": path_obstructions,
-                                                },
-                                                "first_fresnel": {
-                                                    "obstructed": first_fresnel_obstruction,
-                                                    "message": first_fresnel_message,
-                                                },
-                                                "fresnel_60": {
-                                                    "obstructed": fresnel_60_obstruction,
-                                                    "message": fresnel_60_message,
-                                                },
-                                                "rx_signal_power": float(
-                                                    signal_power_line
-                                                )
-                                                + request.rx_gain
-                                                - request.rx_loss,
-                                                "path_loss": float(path_loss_line),
-                                                "path_loss_rssi": request.tx_power
-                                                + request.tx_gain
-                                                - request.tx_loss
-                                                - float(path_loss_line)
-                                                + request.rx_gain
-                                                - request.rx_loss,
-                                                "lr_it_loss_line_type": lr_it_loss_line_type,
-                                                "lr_it_loss": float(lr_it_loss_line),
-                                                "lr_it_loss_rssi": request.tx_power
-                                                + request.tx_gain
-                                                - request.tx_loss
-                                                - float(lr_it_loss_line)
-                                                + request.rx_gain
-                                                - request.rx_loss,
-                                            }
-                                        )
+                return dumps(
+                    {
+                        "distance": distance,
+                        "profile": profile,
+                        "curvature": curvature,
+                        "fresnel": fresnel,
+                        "fresnel_pt_6": fresnel_pt_6,
+                        "reference": reference,
+                        "path": {
+                            "obstructed": report["path_obstruction"],
+                            "message": report["path_message"],
+                            "obstructions": report["path_obstructions"],
+                        },
+                        "first_fresnel": {
+                            "obstructed": report["first_fresnel_obstruction"],
+                            "message": report["first_fresnel_message"],
+                        },
+                        "fresnel_60": {
+                            "obstructed": report["fresnel_60_obstruction"],
+                            "message": report["fresnel_60_message"],
+                        },
+                        "rx_signal_power": rx_signal_power,
+                        "path_loss": fspl,
+                        "path_loss_rssi": path_loss_rssi,
+                        "lr_it_loss_line_type": report["lr_loss_type"],
+                        "lr_it_loss": lr_loss,
+                        "lr_it_loss_rssi": lr_it_loss_rssi,
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Error during LOS prediction: {e}")
                 raise RuntimeError(f"Error during LOS prediction: {e}")
-
-    def _copy_antenna_pattern_files(self, dbi: float, tmpdir: str, prefix: str) -> None:
-        pattern_dir = None
-        if math.isclose(dbi, 5.0, rel_tol=0.0, abs_tol=0.01):
-            pattern_dir = "alfa_868_5dbi"
-        elif math.isclose(dbi, 6.5, rel_tol=0.0, abs_tol=0.01):
-            pattern_dir = "mikrotik_868_6.5dbi"
-
-        if not pattern_dir:
-            return
-
-        base_dir = os.path.join(
-            os.path.dirname(__file__), "..", "antenna_radiation_diagrams", pattern_dir
-        )
-        base_dir = os.path.abspath(base_dir)
-        az_path = os.path.join(base_dir, f"{pattern_dir}.az")
-        el_path = os.path.join(base_dir, f"{pattern_dir}.el")
-
-        if not os.path.isfile(az_path) or not os.path.isfile(el_path):
-            logger.warning(
-                f"Antenna pattern files missing for {pattern_dir}: {az_path}, {el_path}"
-            )
-            return
-
-        shutil.copyfile(az_path, os.path.join(tmpdir, f"{prefix}.az"))
-        shutil.copyfile(el_path, os.path.join(tmpdir, f"{prefix}.el"))
 
     def coverage_prediction(self, request: CoveragePredictionRequest) -> bytes:
         logger.debug(f"Coverage prediction request: {request.json()}")
@@ -637,6 +457,205 @@ class Splat:
             except Exception as e:
                 logger.error(f"Error during coverage prediction: {e}")
                 raise RuntimeError(f"Error during coverage prediction: {e}")
+
+    @staticmethod
+    def _read_bytes(path: str) -> bytes:
+        with open(path, "rb") as f:
+            return f.read()
+
+    @staticmethod
+    def _parse_gp_xy_lines(lines, *, value_index: int = 1, logger=None, label="file"):
+        """
+        Parsira gnuplot .gp vrstice tipa: "<x>\t<y>"
+        value_index:
+        - 1: vrne y vrednosti (tipično)
+        Vrne tuple (xs, ys) ali (None, ys) če x-jev ne rabiš.
+        """
+        xs = []
+        ys = []
+        for line in lines:
+            if not line:
+                continue
+            try:
+                parts = line.split("\t")
+                # Nekateri .gp znajo imeti dodatne stolpce; vzemi samo kar rabiš
+                x = float(parts[0])
+                y = float(parts[value_index])
+                xs.append(x)
+                ys.append(y)
+            except Exception:
+                if logger:
+                    logger.warning(f"Skipping invalid line in {label}: {line!r}")
+        return xs, ys
+
+    @staticmethod
+    def _decode_lines(b: bytes):
+        return b.decode("utf-8", errors="ignore").splitlines()
+
+    @staticmethod
+    def _extract_float_after(prefix: bytes, line: bytes, *, idx: int):
+        parts = line.strip().split()
+        if len(parts) > idx:
+            try:
+                return round(float(parts[idx].decode("utf-8", errors="ignore")), 2)
+            except Exception:
+                return None
+        return None
+
+    def _parse_tx_to_rx_report(self, tx_to_rx_data: bytes):
+        lines = tx_to_rx_data.splitlines()
+
+        path_obstruction = True
+        first_fresnel_obstruction = True
+        fresnel_60_obstruction = True
+
+        path_message = ""
+        first_fresnel_message = ""
+        fresnel_60_message = ""
+
+        path_obstructions = []
+
+        signal_power_level_at_rx = None
+        free_space_path_loss = None
+        lr_loss_type = ""
+        lr_loss = None
+
+        NO_LOS = b"No obstructions to LOS path due to terrain were detected by SPLAT!"
+        FIRST_F_CLEAR = b"The first Fresnel zone is clear."
+        F60_CLEAR = b"60% of the first Fresnel zone is clear."
+        OBST_HDR = b"Between rx and tx, SPLAT! detected obstructions at:"
+        CLR_ALL = b"to clear all obstructions detected by SPLAT!"
+        CLR_FIRST = b"to clear the first Fresnel zone."
+        CLR_60 = b"to clear 60% of the first Fresnel zone."
+
+        SIG_RX = b"Signal power level at rx:"
+        FSPL = b"Free space path loss:"
+        LR = b"Longley-Rice path loss:"
+        ITWOM = b"ITWOM Version 3.0 path loss:"
+
+        i = 0
+        n = len(lines)
+        while i < n:
+            line = lines[i]
+
+            if NO_LOS in line:
+                path_obstruction = False
+            elif FIRST_F_CLEAR in line:
+                first_fresnel_obstruction = False
+            elif F60_CLEAR in line:
+                fresnel_60_obstruction = False
+
+            if OBST_HDR in line:
+                j = i + 2
+                while j < n and lines[j].strip() != b"":
+                    raw = lines[j].strip()
+                    parts = [
+                        p.decode("utf-8", errors="ignore").strip() for p in raw.split(b", ")
+                    ]
+                    floats = []
+                    for p in parts:
+                        if not p:
+                            continue
+                        try:
+                            floats.append(round(float(p.split(" ")[0]), 2))
+                        except Exception:
+                            pass
+                    if len(floats) >= 2:
+                        val = floats[1]
+                        original_longitude = 360 - val if val > 180 else -val
+                        floats[1] = original_longitude
+                        path_obstructions.append(floats)
+                    j += 1
+
+            if CLR_ALL in line and i + 1 < n:
+                path_message = f"{lines[i + 1].strip()} {line.strip()}"
+            elif CLR_FIRST in line and i + 1 < n:
+                first_fresnel_message = f"{lines[i + 1].strip()} {line.strip()}"
+            elif CLR_60 in line and i + 1 < n:
+                fresnel_60_message = f"{lines[i + 1].strip()} {line.strip()}"
+
+            if SIG_RX in line:
+                v = self._extract_float_after(SIG_RX, line, idx=5)
+                if v is None:
+                    for token in reversed(line.strip().split()):
+                        try:
+                            signal_power_level_at_rx = round(float(
+                                token.decode("utf-8", errors="ignore")
+                            ), 2)
+                            break
+                        except Exception:
+                            continue
+                else:
+                    signal_power_level_at_rx = v
+
+            if FSPL in line:
+                v = self._extract_float_after(FSPL, line, idx=4)
+                if v is None:
+                    for token in reversed(line.strip().split()):
+                        try:
+                            free_space_path_loss = round(float(
+                                token.decode("utf-8", errors="ignore")
+                            ), 2)
+                            break
+                        except Exception:
+                            continue
+                else:
+                    free_space_path_loss = v
+
+            if LR in line:
+                v = self._extract_float_after(LR, line, idx=3)
+                if v is not None:
+                    lr_loss_type = "Longley-Rice path loss"
+                    lr_loss = round(v, 2)
+
+            if ITWOM in line:
+                v = self._extract_float_after(ITWOM, line, idx=5)
+                if v is not None:
+                    lr_loss_type = "ITWOM Version 3.0 path loss"
+                    lr_loss = round(v, 2)
+
+            i += 1
+
+        return {
+            "path_obstruction": path_obstruction,
+            "path_message": path_message,
+            "path_obstructions": path_obstructions,
+            "first_fresnel_obstruction": first_fresnel_obstruction,
+            "first_fresnel_message": first_fresnel_message,
+            "fresnel_60_obstruction": fresnel_60_obstruction,
+            "fresnel_60_message": fresnel_60_message,
+            "signal_power_level_at_rx": signal_power_level_at_rx,
+            "free_space_path_loss": free_space_path_loss,
+            "lr_loss_type": lr_loss_type,
+            "lr_loss": lr_loss,
+        }
+
+    @staticmethod
+    def _copy_antenna_pattern_files(dbi: float, tmpdir: str, prefix: str) -> None:
+        pattern_dir = None
+        if math.isclose(dbi, 5.0, rel_tol=0.0, abs_tol=0.01):
+            pattern_dir = "alfa_868_5dbi"
+        elif math.isclose(dbi, 6.5, rel_tol=0.0, abs_tol=0.01):
+            pattern_dir = "mikrotik_868_6.5dbi"
+
+        if not pattern_dir:
+            return
+
+        base_dir = os.path.join(
+            os.path.dirname(__file__), "..", "antenna_radiation_diagrams", pattern_dir
+        )
+        base_dir = os.path.abspath(base_dir)
+        az_path = os.path.join(base_dir, f"{pattern_dir}.az")
+        el_path = os.path.join(base_dir, f"{pattern_dir}.el")
+
+        if not os.path.isfile(az_path) or not os.path.isfile(el_path):
+            logger.warning(
+                f"Antenna pattern files missing for {pattern_dir}: {az_path}, {el_path}"
+            )
+            return
+
+        shutil.copyfile(az_path, os.path.join(tmpdir, f"{prefix}.az"))
+        shutil.copyfile(el_path, os.path.join(tmpdir, f"{prefix}.el"))
 
     @staticmethod
     def _save_all_files_from_tmpdir(tmpdir: str):
@@ -1005,7 +1024,7 @@ class Splat:
             raise RuntimeError(f"Error during GeoTIFF generation: {e}")
 
     def _download_terrain_tile(
-        self, required_tiles: List[Tuple[str, str, str]], high_resolution
+        self, required_tiles: List[Tuple[str, str, str]], high_resolution: bool
     ) -> bytes:
         for tile_name, sdf_name, sdf_hd_name in required_tiles:
             url = ""

@@ -7,7 +7,7 @@
 						:class="pickingPolygonArea ? 'bg-red-600' : ''" />
 					<Button v-if="pickingPolygonArea" :text="pickingPolygonArea ? 'Finish polygon' : ''"
 						@click="finishPolygonArea()"
-						:class="areaPolygon.length > 2 ? '!bg-green-600' : '!bg-green-800 cursor-not-allowed'" />
+						:class="store.areaNodeSimModeData.polygonArea.length > 2 ? '!bg-green-600' : '!bg-green-800 cursor-not-allowed'" />
 				</div>
 			</ModeDataAccordian>
 			<ModeDataAccordian title="Transmitter options" v-model:showSection="showSections.transmitter">
@@ -64,6 +64,10 @@
 					<InputNumber title="Situation fraction (%)" v-model:value="simulation.situation_fraction" />
 					<InputNumber title="Time fraction (%)" v-model:value="simulation.time_fraction" />
 				</div>
+				<div class="flex flex-row gap-2 mt-2">
+					<Toggle title="High resolution" v-model:value="simulation.high_resolution" />
+					<Toggle title="ITWOM / Longley-Rice" v-model:value="simulation.itm_mode" />
+				</div>
 			</ModeDataAccordian>
 			<div class="flex flex-row justify-end mt-3">
 				<Button text="Run simulation" @click="runSimulation" :loading="isSimulationRunning"
@@ -97,6 +101,7 @@ import { isMobileDevice, randomHexColor } from "../../utils";
 import Button from "../Inputs/Button.vue";
 import DropDown from "../Inputs/DropDown.vue";
 import InputNumber from "../Inputs/InputNumber.vue";
+import Toggle from "../Inputs/Toggle.vue";
 import ModeDataAccordian from "./ModeDataAccordian.vue";
 
 const map = useMap();
@@ -119,16 +124,11 @@ const showSections = ref({
 
 const markers: Ref<Marker[]> = ref([]);
 
-const areaPolygon: Ref<[number, number][]> = ref([]);
-const polygonMarkers: Ref<Marker[]> = ref([]);
-
-const simulations: Ref<AreaCenterNodeSimulatorSite[]> = ref([]);
-
 const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 	computed(() => {
 		return {
-			id: simulations.value.length.toString(),
-			title: `Simulation ${simulations.value.length}`,
+			id: store.areaNodeSimModeData.simulations.length.toString(),
+			title: `Simulation ${store.areaNodeSimModeData.simulations.length}`,
 			frequency_mhz: 868.5,
 			transmitter: {
 				height: 2,
@@ -138,7 +138,7 @@ const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 			recivers: [
 				{
 					id: randomHexColor(),
-					name: "Receiver 1",
+					name: "RX 1",
 					lat: 45.8481696198,
 					lon: 13.7311562054,
 					height: 2,
@@ -146,7 +146,7 @@ const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 				},
 				{
 					id: randomHexColor(),
-					name: "Receiver 2",
+					name: "RX 2",
 					lat: 45.8467440547,
 					lon: 13.72315913,
 					height: 2,
@@ -163,25 +163,26 @@ const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 			situation_fraction: 95,
 			time_fraction: 95,
 			high_resolution: false,
+			itm_mode: true,
 		};
 	});
 
-if (simulations.value.length === 0) {
-	simulations.value.push(defaultSimulationValues.value);
+if (store.areaNodeSimModeData.simulations.length === 0) {
+	store.areaNodeSimModeData.simulations.push(defaultSimulationValues.value);
 }
 
-const currentTransmitter = ref(simulations.value[0].transmitter);
+const currentTransmitter = ref(store.areaNodeSimModeData.simulations[0].transmitter);
 
-const currentReceiver = ref(simulations.value[0].recivers[0]);
+const currentReceiver = ref(store.areaNodeSimModeData.simulations[0].recivers[0]);
 
 const simulationReceivers = computed(() => {
-	return simulations.value[0].recivers.map((reciver) => ({
+	return store.areaNodeSimModeData.simulations[0].recivers.map((reciver) => ({
 		id: reciver.id,
 		title: reciver.name,
 	}));
 });
 
-const simulation: Ref<AreaCenterNodeSimulatorSite> = ref(simulations.value[0]);
+const simulation: Ref<AreaCenterNodeSimulatorSite> = ref(store.areaNodeSimModeData.simulations[0]);
 
 // watch for current simulation changes
 watch(
@@ -223,12 +224,12 @@ watch(
 );
 
 watch(
-	() => areaPolygon.value,
+	() => store.areaNodeSimModeData.polygonArea,
 	(newPolygon) => {
 		if (!map.isLoaded || !map.map) return;
 
 		// remove all markers
-		for (const marker of polygonMarkers.value) {
+		for (const marker of store.areaNodeSimModeData.polygonMarkers) {
 			marker.remove();
 		}
 
@@ -243,7 +244,7 @@ watch(
 				.setLngLat(point)
 				.addTo(map.map);
 
-			polygonMarkers.value.push(marker);
+			store.areaNodeSimModeData.polygonMarkers.push(marker);
 
 			const popup = new Popup({ offset: 25 }).setHTML(
 				`<div class="text-sm text-center">
@@ -271,24 +272,24 @@ function drawPolygonArea() {
 			areaPolygonSubscription.value.unsubscribe();
 			areaPolygonSubscription.value = null;
 		}
-		areaPolygon.value = [];
+		store.areaNodeSimModeData.polygonArea = [];
 		return;
 	}
 
 	pickingPolygonArea.value = true;
-	areaPolygon.value = [];
+	store.areaNodeSimModeData.polygonArea = [];
 	areaPolygonSubscription.value = map.map.on("click", (e) => {
 		const { lng, lat } = e.lngLat;
 
 		// add point to polygon
-		areaPolygon.value.push([lng, lat]);
+		store.areaNodeSimModeData.polygonArea.push([lng, lat]);
 	});
 }
 
 function finishPolygonArea() {
 	if (!map.isLoaded || !map.map) return;
 
-	if (areaPolygon.value.length < 3) {
+	if (store.areaNodeSimModeData.polygonArea.length < 3) {
 		notificationStore.addNotification({
 			type: "error",
 			message: "Polygon must have at least 3 points.",
@@ -305,7 +306,7 @@ function finishPolygonArea() {
 		areaPolygonSubscription.value = null;
 	}
 
-	areaPolygon.value.push(areaPolygon.value[0]);
+	store.areaNodeSimModeData.polygonArea.push(store.areaNodeSimModeData.polygonArea[0]);
 }
 
 function addReceiverLocationListener() {
@@ -356,13 +357,13 @@ function flyToSimulationsExtent() {
 
 	const points: [number, number][] = [];
 
-	for (const sim of simulations.value) {
+	for (const sim of store.areaNodeSimModeData.simulations) {
 		for (const receiver of sim.recivers) {
 			points.push([receiver.lon, receiver.lat]);
 		}
 	}
 
-	for (const point of areaPolygon.value) {
+	for (const point of store.areaNodeSimModeData.polygonArea) {
 		points.push(point);
 	}
 
@@ -425,7 +426,7 @@ function removeReceiver(id: string) {
 function addReceiver() {
 	simulation.value.recivers.push({
 		id: randomHexColor(),
-		name: `Receiver ${simulation.value.recivers.length + 1}`,
+		name: `RX ${simulation.value.recivers.length + 1}`,
 		lat: 45.8467440547,
 		lon: 13.72315913,
 		gain: 2,
@@ -447,7 +448,7 @@ async function runSimulation() {
 	});
 
 	isSimulationRunning.value = true;
-	const res = await store.fetchOverpassArea(areaPolygon.value);
+	const res = await store.fetchOverpassArea(store.areaNodeSimModeData.polygonArea);
 
 	if (!res || res.length === 0) {
 		notificationStore.addNotification({
@@ -493,6 +494,7 @@ async function runSimulation() {
 					time_fraction: simulation.value.time_fraction,
 					tx_loss: simulation.value.tx_loss,
 					high_resolution: simulation.value.high_resolution,
+					itm_mode: simulation.value.itm_mode,
 				});
 
 				if (!predictRes.ok)
@@ -572,7 +574,7 @@ onBeforeUnmount(() => {
 		marker.remove();
 	}
 
-	for (const marker of polygonMarkers.value) {
+	for (const marker of store.areaNodeSimModeData.polygonMarkers) {
 		marker.remove();
 	}
 

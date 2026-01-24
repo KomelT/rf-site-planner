@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
-import { ref, watch } from "vue";
+import { Ref, ref, watch } from "vue";
 import type {
+	AreaCenterNodeSimulatorSite,
 	CenterNodeSimulatorSite,
 	CoverageSimulatorPayload,
 	CoverageSimulatorSite,
@@ -11,6 +12,7 @@ import type {
 	OverpassResponse,
 } from "./types.ts";
 import { ApexOptions } from "apexcharts";
+import { Marker } from "maplibre-gl";
 
 const useStore = defineStore("store", {
 	state() {
@@ -51,6 +53,11 @@ const useStore = defineStore("store", {
 					show: false,
 				}),
 				simulations: [] as CenterNodeSimulatorSite[],
+			}),
+			areaNodeSimModeData: ref({
+				simulations: [] as AreaCenterNodeSimulatorSite[],
+				polygonArea: ref([]) as Ref<[number, number][]>,
+				polygonMarkers: ref([]) as Ref<Marker[]>,
 			}),
 			geoJsonLine: ref({
 				type: "LineString" as "LineString" | "MultiLineString",

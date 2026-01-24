@@ -1,83 +1,83 @@
 # RF Site Planner – RSSI analysis
 
-- Generated: 2026-01-23 12:42:35
+- Generated: 2026-01-24 10:49:48
 
 ## Summary per gateway
 
 | Gateway (site id) | Completed requests | Failed requests | Skipped rows (missing RSSI) | Number of samples (N) | Mean absolute error [dB] | Standard deviation of error [dB] | Root mean square error [dB] | Average error / bias [dB] | 90th percentile of absolute error [dB] | Share within ±6 dB | Pearson correlation (predicted vs measured) |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| !75f19024 | 358 | 0 | 78 | 358 | 28.967 | 24.769 | 35.723 | -25.774 | 60.394 | 13.7% | 0.323 |
-| !7369fb6a | 429 | 0 | 7 | 429 | 14.376 | 18.778 | 19.990 | -6.915 | 37.338 | 33.6% | 0.675 |
+| !75f19024 | 361 | 0 | 78 | 361 | 32.402 | 24.787 | 39.589 | 30.897 | 65.590 | 15.5% | 0.322 |
+| !7369fb6a | 427 | 0 | 7 | 427 | 14.314 | 18.747 | 19.893 | 6.718 | 37.026 | 33.3% | 0.676 |
 
 ## Gateway: `!75f19024`
 
-- Completed requests: **358**
+- Completed requests: **361**
 - Failed requests: **0**
 - Skipped rows (missing RSSI): **78**
-- Number of samples (N): **358**
-- Pearson correlation (predicted vs measured): **0.323**
+- Number of samples (N): **361**
+- Pearson correlation (predicted vs measured): **0.322**
 
 ### Distribution by visibility category
 
 | Category | N | Share |
 | --- | --- | --- |
-| Line of sight clear (no obstructions) | 51 | 14.2% |
-| Line of sight obstructed | 181 | 50.6% |
-| 60% of first Fresnel zone obstructed | 80 | 22.3% |
-| First Fresnel zone obstructed | 46 | 12.8% |
+| Line of sight clear (no obstructions) | 53 | 14.7% |
+| Line of sight obstructed | 183 | 50.7% |
+| 60% of first Fresnel zone obstructed | 78 | 21.6% |
+| First Fresnel zone obstructed | 47 | 13.0% |
 
 ### Error statistics by category (error = predicted − measured)
 
 | Metric | All samples | Line of sight clear | Line of sight obstructed | Fresnel 60% obstructed | First Fresnel obstructed |
 | --- | --- | --- | --- | --- | --- |
-| Number of samples (N) | 358 | 51 | 181 | 80 | 46 |
-| Average error / bias (mean of predicted − measured) [dB] | -25.774 | -7.872 | -41.546 | -12.446 | -6.742 |
-| Standard deviation of error [dB] | 24.769 | 9.792 | 21.756 | 17.189 | 17.290 |
-| Mean absolute error [dB] | 28.967 | 10.433 | 42.412 | 18.633 | 14.587 |
-| Root mean square error [dB] | 35.723 | 12.488 | 46.870 | 21.134 | 18.382 |
-| Median error [dB] | -25.090 | -9.510 | -45.290 | -22.185 | 0.400 |
-| Median absolute deviation (robust spread) [dB] | 20.055 | 5.600 | 15.020 | 9.385 | 9.610 |
-| 90th percentile of absolute error [dB] | 60.394 | 17.710 | 62.870 | 31.560 | 31.775 |
-| 95th percentile of absolute error [dB] | 62.964 | 21.270 | 73.820 | 32.560 | 31.780 |
-| Minimum error [dB] | -99.360 | -32.800 | -99.360 | -33.560 | -32.580 |
-| Maximum error [dB] | 19.970 | 10.260 | 19.510 | 17.970 | 19.970 |
-| Share within ±3 dB | 7.3% | 15.7% | 3.3% | 7.5% | 13.0% |
-| Share within ±6 dB | 13.7% | 25.5% | 3.9% | 17.5% | 32.6% |
-| Share within ±10 dB | 22.3% | 49.0% | 5.5% | 27.5% | 50.0% |
+| Number of samples (N) | 361 | 53 | 183 | 78 | 47 |
+| Average error / bias (mean of predicted − measured) [dB] | 30.897 | 13.330 | 46.706 | 17.031 | 12.163 |
+| Standard deviation of error [dB] | 24.787 | 10.009 | 21.711 | 17.198 | 17.344 |
+| Mean absolute error [dB] | 32.402 | 14.131 | 47.235 | 20.155 | 15.573 |
+| Root mean square error [dB] | 39.589 | 16.612 | 51.480 | 24.125 | 21.032 |
+| Median error [dB] | 30.340 | 14.680 | 50.580 | 27.115 | 5.600 |
+| Median absolute deviation (robust spread) [dB] | 19.950 | 5.530 | 15.010 | 9.455 | 10.820 |
+| 90th percentile of absolute error [dB] | 65.590 | 24.822 | 68.374 | 36.553 | 36.774 |
+| 95th percentile of absolute error [dB] | 68.500 | 29.238 | 78.782 | 37.560 | 36.780 |
+| Minimum error [dB] | -14.970 | -5.260 | -14.510 | -12.970 | -14.970 |
+| Maximum error [dB] | 104.360 | 37.800 | 104.360 | 38.560 | 37.580 |
+| Share within ±3 dB | 8.6% | 13.2% | 1.6% | 12.8% | 23.4% |
+| Share within ±6 dB | 15.5% | 24.5% | 2.7% | 24.4% | 40.4% |
+| Share within ±10 dB | 21.9% | 32.1% | 4.9% | 35.9% | 53.2% |
 
 ## Gateway: `!7369fb6a`
 
-- Completed requests: **429**
+- Completed requests: **427**
 - Failed requests: **0**
 - Skipped rows (missing RSSI): **7**
-- Number of samples (N): **429**
-- Pearson correlation (predicted vs measured): **0.675**
+- Number of samples (N): **427**
+- Pearson correlation (predicted vs measured): **0.676**
 
 ### Distribution by visibility category
 
 | Category | N | Share |
 | --- | --- | --- |
-| Line of sight clear (no obstructions) | 33 | 7.7% |
-| Line of sight obstructed | 190 | 44.3% |
-| 60% of first Fresnel zone obstructed | 163 | 38.0% |
-| First Fresnel zone obstructed | 43 | 10.0% |
+| Line of sight clear (no obstructions) | 32 | 7.5% |
+| Line of sight obstructed | 190 | 44.5% |
+| 60% of first Fresnel zone obstructed | 161 | 37.7% |
+| First Fresnel zone obstructed | 44 | 10.3% |
 
 ### Error statistics by category (error = predicted − measured)
 
 | Metric | All samples | Line of sight clear | Line of sight obstructed | Fresnel 60% obstructed | First Fresnel obstructed |
 | --- | --- | --- | --- | --- | --- |
-| Number of samples (N) | 429 | 33 | 190 | 163 | 43 |
-| Average error / bias (mean of predicted − measured) [dB] | -6.915 | 1.972 | -19.988 | 4.336 | 1.378 |
-| Standard deviation of error [dB] | 18.778 | 12.224 | 19.473 | 8.486 | 9.924 |
-| Mean absolute error [dB] | 14.376 | 9.520 | 22.447 | 7.702 | 7.744 |
-| Root mean square error [dB] | 19.990 | 12.198 | 27.869 | 9.506 | 9.904 |
-| Median error [dB] | -1.880 | 4.320 | -18.255 | 5.430 | 4.260 |
-| Median absolute deviation (robust spread) [dB] | 9.380 | 6.950 | 14.965 | 4.810 | 4.280 |
-| 90th percentile of absolute error [dB] | 37.338 | 19.492 | 46.487 | 14.278 | 14.356 |
-| 95th percentile of absolute error [dB] | 45.456 | 28.038 | 50.113 | 16.728 | 15.701 |
-| Minimum error [dB] | -68.380 | -30.690 | -68.380 | -30.730 | -29.540 |
-| Maximum error [dB] | 62.860 | 27.010 | 62.860 | 22.770 | 15.720 |
-| Share within ±3 dB | 14.0% | 18.2% | 9.5% | 17.8% | 16.3% |
-| Share within ±6 dB | 33.6% | 36.4% | 20.5% | 43.6% | 51.2% |
-| Share within ±10 dB | 55.2% | 69.7% | 33.2% | 73.0% | 74.4% |
+| Number of samples (N) | 427 | 32 | 190 | 161 | 44 |
+| Average error / bias (mean of predicted − measured) [dB] | 6.718 | -1.802 | 19.572 | -4.403 | -1.902 |
+| Standard deviation of error [dB] | 18.747 | 12.379 | 19.547 | 8.473 | 10.069 |
+| Mean absolute error [dB] | 14.314 | 9.585 | 22.130 | 7.734 | 8.082 |
+| Root mean square error [dB] | 19.893 | 12.317 | 27.625 | 9.525 | 10.134 |
+| Median error [dB] | 1.460 | -3.880 | 17.480 | -5.440 | -4.760 |
+| Median absolute deviation (robust spread) [dB] | 9.660 | 6.695 | 14.450 | 4.790 | 4.400 |
+| 90th percentile of absolute error [dB] | 37.026 | 19.751 | 46.487 | 13.790 | 15.099 |
+| 95th percentile of absolute error [dB] | 45.462 | 28.167 | 50.113 | 16.780 | 15.691 |
+| Minimum error [dB] | -62.860 | -27.010 | -62.860 | -22.770 | -15.720 |
+| Maximum error [dB] | 68.380 | 30.690 | 68.380 | 30.730 | 29.540 |
+| Share within ±3 dB | 13.8% | 18.8% | 10.0% | 17.4% | 13.6% |
+| Share within ±6 dB | 33.3% | 37.5% | 21.1% | 42.9% | 47.7% |
+| Share within ±10 dB | 55.3% | 68.8% | 34.2% | 72.7% | 72.7% |
 

@@ -24,7 +24,7 @@ RX_SITES = [
         "rssi_field": "!75f19024",
         "rx_height": 15.0,
         "rx_gain": 6.5,
-        "rx_loss": 5.0,
+        "rx_loss": 2.0,
     },
     {
         "name": "SV. Katarina",
@@ -33,7 +33,7 @@ RX_SITES = [
         "rssi_field": "!7369fb6a",
         "rx_height": 3.0,
         "rx_gain": 5.0,
-        "rx_loss": 0.0,
+        "rx_loss": 1.0,
     },
     {
         "name": "Mobil",
@@ -63,10 +63,10 @@ POLL_AFTER_5S = 0.5
 POLL_AFTER_20S = 1.0
 
 DEFAULTS = {
-    "tx_height": 3.0,
+    "tx_height": 2.0,
     "tx_power": 27.0,
     "tx_gain": 5.0,
-    "tx_loss": 10,
+    "tx_loss": 3,
     "frequency_mhz": 869.525,
     "clutter_height": 2.0,
     "ground_dielectric": 15.0,
@@ -239,7 +239,7 @@ def apply_result_to_stats(
     if pred_f is None:
         return
 
-    diff = rssi - pred_f
+    diff = abs(rssi) - abs(pred_f)
 
     st["diff_values"].append(diff)
     st["x"].append(idx)
@@ -477,10 +477,10 @@ def save_series_plot(
     fig, ax = plt.subplots()
     ax.plot(x, y)
 
-    _scatter_if(ax, green_x or [], green_y or [], color="green", s=16, zorder=3, label="No obstructions")
-    _scatter_if(ax, red_x or [], red_y or [], color="red", s=16, zorder=3, label="LOS obstructed")
-    _scatter_if(ax, orange_x or [], orange_y or [], color="orange", s=16, zorder=3, label="Fresnel 60 obstructed")
-    _scatter_if(ax, yellow_x or [], yellow_y or [], color="yellow", s=16, zorder=3, label="First Fresnel obstructed")
+    _scatter_if(ax, green_x or [], green_y or [], color="green", s=16, zorder=3, label="Brez ovir")
+    _scatter_if(ax, red_x or [], red_y or [], color="red", s=16, zorder=3, label="LOS oviran")
+    _scatter_if(ax, orange_x or [], orange_y or [], color="orange", s=16, zorder=3, label="Fresnel 60 oviran")
+    _scatter_if(ax, yellow_x or [], yellow_y or [], color="yellow", s=16, zorder=3, label="Prvi Fresnel oviran")
 
     ax.set_title(title)
     ax.set_xlabel(xlabel)
@@ -809,7 +809,7 @@ def write_stats_and_plots(
             save_series_plot(
                 st["x"],
                 st["diff"],
-                title=f"{f} - error ({pred_label} - measured) RSSI",
+                title=f"{f} - napaka glede na vidnost (meritev - simulacija)",
                 xlabel="Row ID",
                 ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / f"{f}_diff.png"),

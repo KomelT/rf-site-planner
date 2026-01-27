@@ -810,7 +810,7 @@ def write_stats_and_plots(
                 st["x"],
                 st["diff"],
                 title=f"{f} - napaka glede na vidnost (meritev - simulacija)",
-                xlabel="Row ID",
+                xlabel="ID vrstice",
                 ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / f"{f}_diff.png"),
                 green_x=st["los_fresnel_clear_x"],
@@ -827,10 +827,10 @@ def write_stats_and_plots(
                 st["x"],
                 st["rssi"],
                 st["pred"],
-                label1="measured",
-                label2=pred_label,
-                title=f"{f} gw: measured vs {pred_label} RSSI",
-                xlabel="Row ID",
+                label1="izmerjeni RSSI",
+                label2="simulirani RSSI",
+                title=f"{f} - izmerjeni in simulirani RSSI",
+                xlabel="ID vrstice",
                 ylabel="RSSI (dBm)",
                 out_png=str(output_dir / f"{f}_val.png"),
             )
@@ -857,7 +857,7 @@ def write_stats_and_plots(
             save_multi_series_plot(
                 diff_series,
                 title=f"All gateways: RSSI napaka ({pred_label} - measured)",
-                xlabel="Row ID",
+                xlabel="ID vrstice",
                 ylabel="RSSI napaka (dB)",
                 out_png=str(output_dir / "all_sites_diff.png"),
             )
@@ -895,7 +895,7 @@ def write_distance_boxplots(
             st["dist_km"],
             st["diff_values"],
             bin_km,
-            title=f"{f} gateway: {pred_label} error by distance ({bin_tag} bins)",
+            title=f"{f} - napaka glede na dolžino povezave",
             ylabel="RSSI napaka (dB)",
             out_png=str(out_png),
         )
@@ -921,8 +921,8 @@ def write_non_los_length_scatter(
         save_scatter_with_linreg(
             st["los_obstructed_dist"],
             st["los_obstructed_diff"],
-            title=f"{f} gateway: {pred_label} error vs link length (non-LOS)",
-            xlabel="Link length (km)",
+            title=f"{f} - napaka glede na dolžino povezave",
+            xlabel="Dolžina povezave (km)",
             ylabel="RSSI napaka (dB)",
             out_png=str(out_png),
         )

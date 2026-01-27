@@ -20,7 +20,7 @@
 								</svg>
 							</button>
 						</div>
-						<DropDown title="Sort methods" :options="sortMethods" v-model="selectedSortMethod"
+						<DropDown title="Sort methods" :options="sortMethods" v-model:selected="selectedSortMethod"
 							:btnOptions="{ labelColor: 'text-gray-900' }" />
 					</div>
 				</div>
@@ -83,9 +83,13 @@ export type CentralNodetableProps = {
 const hide = ref(false);
 
 const sortMethods = [
+	{ id: "custom", title: "Custom" },
+	{ id: "max", title: "Max" },
+	{ id: "min", title: "Min" },
 	{ id: "average", title: "Average" }
 ]
-const selectedSortMethod = ref(sortMethods[0].id);
+const selectedSortMethod = ref(sortMethods[0]);
+const selectedSortId = () => selectedSortMethod.value?.id ?? "custom";
 
 const props = defineProps<CentralNodetableProps>();
 
@@ -93,8 +97,61 @@ const store = useStore();
 
 const cols = ref<string[]>([]);
 const colsNames = ref<string[]>([]);
+const baseRows = ref<string[][]>([]);
 const rows = ref<string[][]>([]);
 const colsSortWays = ref<Map<number, 'asc' | 'desc'>>(new Map());
+const skipCustomReset = ref(false);
+
+const parseRSSI = (value: string) => {
+	const parsed = Number.parseFloat(value.split(" ")[0]);
+	return Number.isFinite(parsed) ? parsed : null;
+};
+
+const getRowStats = (row: string[]) => {
+	const values = row
+		.slice(1)
+		.map(parseRSSI)
+		.filter((val): val is number => val !== null);
+
+	if (values.length === 0) {
+		return { hasValues: false, min: Number.POSITIVE_INFINITY, max: Number.NEGATIVE_INFINITY, avg: Number.NEGATIVE_INFINITY };
+	}
+
+	const min = Math.min(...values);
+	const max = Math.max(...values);
+	const avg = values.reduce((sum, val) => sum + val, 0) / values.length;
+	return { hasValues: true, min, max, avg };
+};
+
+const applySortMethod = (method: string) => {
+	if (method === "custom") {
+		rows.value = [...baseRows.value];
+		return;
+	}
+
+	const sorted = [...baseRows.value].sort((a, b) => {
+		const aStats = getRowStats(a);
+		const bStats = getRowStats(b);
+
+		if (!aStats.hasValues && !bStats.hasValues) {
+			return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" });
+		}
+		if (!aStats.hasValues) return 1;
+		if (!bStats.hasValues) return -1;
+
+		if (method === "min") {
+			if (aStats.min !== bStats.min) return aStats.min - bStats.min;
+		} else if (method === "max") {
+			if (aStats.max !== bStats.max) return bStats.max - aStats.max;
+		} else if (method === "average") {
+			if (aStats.avg !== bStats.avg) return bStats.avg - aStats.avg;
+		}
+
+		return a[0].localeCompare(b[0], undefined, { numeric: true, sensitivity: "base" });
+	});
+
+	rows.value = sorted;
+};
 
 watch(
 	() => store.centerNodeSimModeData.table.data,
@@ -113,7 +170,7 @@ watch(
 			const txIds = Array.from(new Set(newData.map((val) => val.tx_id)));
 
 			// Create rows based on tx_ids
-			rows.value = txIds.map((txId) => {
+			baseRows.value = txIds.map((txId) => {
 				const row = [
 					`${newData.find((val) => val.tx_id === txId)?.tx_title || txId}`,
 				];
@@ -125,16 +182,30 @@ watch(
 				}
 				return row;
 			});
+			rows.value = [...baseRows.value];
+			applySortMethod(selectedSortId());
 		} else {
 			cols.value = [];
 			colsNames.value = [];
+			baseRows.value = [];
 			rows.value = [];
 		}
 	},
 	{ immediate: true, deep: true },
 );
 
+watch(selectedSortMethod, (method) => {
+	const methodId = method?.id ?? "custom";
+	if (methodId === "custom" && skipCustomReset.value) {
+		skipCustomReset.value = false;
+		return;
+	}
+	applySortMethod(methodId);
+});
+
 function sortByColumn(columnIndex: number) {
+	skipCustomReset.value = true;
+	selectedSortMethod.value = sortMethods[0];
 	const isRSSI = columnIndex > 0;
 
 	// 1) decide next direction first (outside comparator)

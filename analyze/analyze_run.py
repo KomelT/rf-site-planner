@@ -80,8 +80,6 @@ DEFAULTS = {
     "itm_mode": True,
 }
 
-DISTANCE_BIN_KM_DEFAULT = 1.0
-
 # ---------------------------------------------------------------------------
 # HTTP helpers
 # ---------------------------------------------------------------------------
@@ -201,13 +199,16 @@ def new_site_stats() -> Dict[str, Any]:
         "dist_km": [],
         "los_fresnel_clear_x": [],
         "los_fresnel_clear_diff": [],
+        "los_fresnel_clear_dist": [],
         "los_obstructed_x": [],
         "los_obstructed_diff": [],
         "los_obstructed_dist": [],
         "fresnel_60_obstructed_x": [],
         "fresnel_60_obstructed_diff": [],
+        "fresnel_60_obstructed_dist": [],
         "first_fresnel_obstructed_x": [],
         "first_fresnel_obstructed_diff": [],
+        "first_fresnel_obstructed_dist": [],
     }
 
 
@@ -255,12 +256,15 @@ def apply_result_to_stats(
     elif fresnel_60_obstructed is True:
         st["fresnel_60_obstructed_x"].append(idx)
         st["fresnel_60_obstructed_diff"].append(diff)
+        st["fresnel_60_obstructed_dist"].append(dist_km)
     elif first_fresnel_obstructed is True:
         st["first_fresnel_obstructed_x"].append(idx)
         st["first_fresnel_obstructed_diff"].append(diff)
+        st["first_fresnel_obstructed_dist"].append(dist_km)
     else:
         st["los_fresnel_clear_x"].append(idx)
         st["los_fresnel_clear_diff"].append(diff)
+        st["los_fresnel_clear_dist"].append(dist_km)
 
 
 def _percentile(sorted_vals: List[float], q: float) -> Optional[float]:
@@ -364,22 +368,6 @@ def _fmt_pct(x: Optional[float], nd: int = 1) -> str:
     if isinstance(x, float) and (math.isnan(x) or math.isinf(x)):
         return ""
     return f"{x * 100:.{nd}f}%"
-
-
-def _fmt_km_val(x: float) -> str:
-    if abs(x - round(x)) < 1e-6:
-        return str(int(round(x)))
-    return f"{x:.1f}"
-
-
-def _distance_bin_label(bin_idx: int, bin_km: float) -> str:
-    start = bin_idx * bin_km
-    end = start + bin_km
-    return f"{_fmt_km_val(start)}-{_fmt_km_val(end)} km"
-
-
-def _distance_bin_tag(bin_km: float) -> str:
-    return f"{_fmt_km_val(bin_km)}km"
 
 
 def _md_table_row(cols: List[str]) -> str:
@@ -574,7 +562,7 @@ def save_scatter_with_linreg(
         ax.text(
             0.02,
             0.98,
-            f"y = {m:.3f}x + {b:.3f}\nR² = {r2:.3f}",
+            f"y = {m:.3f}x + {b:.3f}\nR² = {r2:.3f}\nΔ = {m:.3f} dB/km",
             transform=ax.transAxes,
             ha="left",
             va="top",
@@ -620,40 +608,6 @@ def save_diff_category_boxplot(
     fig.savefig(out_png, dpi=150)
     plt.close(fig)
     print(f"Wrote plot: {out_png}", file=stderr)
-
-
-def save_distance_boxplot(
-    dist_km: List[float],
-    diffs: List[float],
-    bin_km: float,
-    title: str,
-    ylabel: str,
-    out_png: str,
-    stderr=sys.stderr,
-):
-    if not dist_km or not diffs:
-        return
-    if bin_km <= 0:
-        return
-
-    bins: Dict[int, List[float]] = {}
-    for d, diff in zip(dist_km, diffs):
-        if d is None:
-            continue
-        bin_idx = int(math.floor(d / bin_km))
-        bins.setdefault(bin_idx, []).append(diff)
-
-    categories = [(_distance_bin_label(idx, bin_km), bins[idx]) for idx in sorted(bins.keys())]
-    save_diff_category_boxplot(
-        categories,
-        title,
-        ylabel,
-        out_png,
-        title_size=10,
-        label_size=9,
-        tick_size=8,
-        stderr=stderr,
-    )
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -876,85 +830,32 @@ def write_stats_and_plots(
             )
 
 
-def write_distance_boxplots(
-    output_dir: Path,
-    detected_sites: List[Dict[str, Any]],
-    per_site: Dict[str, Dict[str, Any]],
-    pred_label: str,
-    bin_km: float,
-) -> None:
-    if bin_km <= 0:
-        return
-    output_dir.mkdir(exist_ok=True)
-    bin_tag = _distance_bin_tag(bin_km)
-    for s in detected_sites:
-        f = s["rssi_field"]
-        st = per_site[f]
-        out_png = output_dir / f"{f}_diff_box_by_{bin_tag}.png"
-        save_distance_boxplot(
-            st["dist_km"],
-            st["diff_values"],
-            bin_km,
-            title=f"{f} - napaka glede na dolžino povezave",
-            ylabel="RSSI napaka (dB)",
-            out_png=str(out_png),
-        )
-
-
-def write_non_los_length_scatter(
+def write_length_vs_error_scatter(
     output_dir: Path,
     detected_sites: List[Dict[str, Any]],
     per_site: Dict[str, Dict[str, Any]],
     pred_label: str,
 ) -> None:
     output_dir.mkdir(exist_ok=True)
-    summary_rows = []
     for s in detected_sites:
         f = s["rssi_field"]
         st = per_site[f]
-        reg = _linreg(st["los_obstructed_dist"], st["los_obstructed_diff"])
-        if reg:
-            m, b, r2 = reg
-        else:
-            m = b = r2 = None
-        out_png = output_dir / f"{f}_diff_vs_length_non_los.png"
-        save_scatter_with_linreg(
-            st["los_obstructed_dist"],
-            st["los_obstructed_diff"],
-            title=f"{f} - napaka glede na dolžino povezave",
-            xlabel="Dolžina povezave (km)",
-            ylabel="RSSI napaka (dB)",
-            out_png=str(out_png),
-        )
-        summary_rows.append(
-            {
-                "site": f,
-                "count": len(st["los_obstructed_diff"]),
-                "slope_db_per_km": m,
-                "intercept_db": b,
-                "r2": r2,
-            }
-        )
-
-    summary_path = output_dir / "summary.md"
-    with open(summary_path, "w", encoding="utf-8") as out_md:
-        print(f"# Non-LOS error vs link length ({pred_label})", file=out_md)
-        print("", file=out_md)
-        header = ["Gateway (site id)", "N", "Slope [dB/km]", "Intercept [dB]", "R²"]
-        print(_md_table_row(header), file=out_md)
-        print(_md_table_row(["---"] * len(header)), file=out_md)
-        for row in summary_rows:
-            print(
-                _md_table_row(
-                    [
-                        row["site"],
-                        str(int(row["count"])),
-                        _fmt_f(row["slope_db_per_km"], 4) if row["slope_db_per_km"] is not None else "",
-                        _fmt_f(row["intercept_db"], 3) if row["intercept_db"] is not None else "",
-                        _fmt_f(row["r2"], 3) if row["r2"] is not None else "",
-                    ]
-                ),
-                file=out_md,
+        plots = [
+            ("all", st["dist_km"], st["diff_values"]),
+            ("los", st["los_fresnel_clear_dist"], st["los_fresnel_clear_diff"]),
+            ("nlos", st["los_obstructed_dist"], st["los_obstructed_diff"]),
+            ("nf60", st["fresnel_60_obstructed_dist"], st["fresnel_60_obstructed_diff"]),
+            ("nff", st["first_fresnel_obstructed_dist"], st["first_fresnel_obstructed_diff"]),
+        ]
+        for label, xs, ys in plots:
+            out_png = output_dir / f"{f}_diff_vs_length_{label}.png"
+            save_scatter_with_linreg(
+                xs,
+                ys,
+                title=f"{f} - napaka glede na dolžino povezave ({label})",
+                xlabel="Dolžina povezave (km)",
+                ylabel="RSSI napaka (dB)",
+                out_png=str(out_png),
             )
 
 
@@ -1063,12 +964,6 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--no-prediction", "-n", action="store_true", help="Skip API calls and rebuild stats/plots from analyze.csv")
     p.add_argument("--parallel", "-p", type=int, default=20, help="Number of parallel LOS requests (0 = sequential)")
     p.add_argument("--queue-mult", type=int, default=4, help="Max in-flight = parallel * queue_mult")
-    p.add_argument(
-        "--distance-bin-km",
-        type=float,
-        default=DISTANCE_BIN_KM_DEFAULT,
-        help="Distance bin size in km for diff boxplots (default: 1.0)",
-    )
     return p.parse_args()
 
 
@@ -1079,9 +974,6 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    if args.distance_bin_km <= 0:
-        print("--distance-bin-km must be > 0", file=sys.stderr)
-        return 1
 
     csv_path = resolve_csv_path(args.input_path)
     output_dir = csv_path.parent
@@ -1174,18 +1066,9 @@ def main() -> int:
         write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
         write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
 
-        model_len_dir = output_dir / "model_pred_length"
-        write_distance_boxplots(
+        model_len_dir = output_dir / "model_pred_length_vs_error"
+        write_length_vs_error_scatter(
             model_len_dir,
-            detected_sites,
-            per_site_model,
-            pred_label="predicted",
-            bin_km=args.distance_bin_km,
-        )
-
-        model_nlos_len_dir = output_dir / "model_pred_length_non_los"
-        write_non_los_length_scatter(
-            model_nlos_len_dir,
             detected_sites,
             per_site_model,
             pred_label="predicted",
@@ -1400,18 +1283,9 @@ def main() -> int:
     write_stats_and_plots(model_dir, detected_sites, per_site_model, pred_label="predicted")
     write_stats_and_plots(fpls_dir, detected_sites, per_site_fpls, pred_label="path loss")
 
-    model_len_dir = output_dir / "model_pred_length"
-    write_distance_boxplots(
+    model_len_dir = output_dir / "model_pred_length_vs_error"
+    write_length_vs_error_scatter(
         model_len_dir,
-        detected_sites,
-        per_site_model,
-        pred_label="predicted",
-        bin_km=args.distance_bin_km,
-    )
-
-    model_nlos_len_dir = output_dir / "model_pred_length_non_los"
-    write_non_los_length_scatter(
-        model_nlos_len_dir,
         detected_sites,
         per_site_model,
         pred_label="predicted",

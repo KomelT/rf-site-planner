@@ -223,7 +223,8 @@ class Splat:
                 }
 
                 data = {
-                    k: self._read_bytes(os.path.join(tmpdir, v)) for k, v in files.items()
+                    k: self._read_bytes(os.path.join(tmpdir, v))
+                    for k, v in files.items()
                 }
 
                 profile_lines = self._decode_lines(data["profile"])
@@ -260,6 +261,11 @@ class Splat:
 
                 if sig is not None:
                     rx_signal_power = sig + request.rx_gain - request.rx_loss
+                    rx_signal_power_optimized = (
+                        rx_signal_power
+                        if not report["path_obstruction"]
+                        else rx_signal_power + (1.651 * (report["distance"]))
+                    )
 
                 if fspl is not None:
                     path_loss_rssi = (
@@ -304,6 +310,7 @@ class Splat:
                             "message": report["fresnel_60_message"],
                         },
                         "rx_signal_power": rx_signal_power,
+                        "rx_signal_power_optimized": rx_signal_power_optimized,
                         "path_loss": fspl,
                         "path_loss_rssi": path_loss_rssi,
                         "lr_it_loss_line_type": report["lr_loss_type"],
@@ -555,7 +562,8 @@ class Splat:
                 while j < n and lines[j].strip() != b"":
                     raw = lines[j].strip()
                     parts = [
-                        p.decode("utf-8", errors="ignore").strip() for p in raw.split(b", ")
+                        p.decode("utf-8", errors="ignore").strip()
+                        for p in raw.split(b", ")
                     ]
                     floats = []
                     for p in parts:
@@ -584,9 +592,9 @@ class Splat:
                 if v is None:
                     for token in reversed(line.strip().split()):
                         try:
-                            signal_power_level_at_rx = round(float(
-                                token.decode("utf-8", errors="ignore")
-                            ), 2)
+                            signal_power_level_at_rx = round(
+                                float(token.decode("utf-8", errors="ignore")), 2
+                            )
                             break
                         except Exception:
                             continue
@@ -598,9 +606,9 @@ class Splat:
                 if v is None:
                     for token in reversed(line.strip().split()):
                         try:
-                            free_space_path_loss = round(float(
-                                token.decode("utf-8", errors="ignore")
-                            ), 2)
+                            free_space_path_loss = round(
+                                float(token.decode("utf-8", errors="ignore")), 2
+                            )
                             break
                         except Exception:
                             continue

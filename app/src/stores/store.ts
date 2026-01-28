@@ -58,6 +58,7 @@ const useStore = defineStore("store", {
 				simulations: [] as AreaCenterNodeSimulatorSite[],
 				polygonArea: ref([]) as Ref<[number, number][]>,
 				polygonMarkers: ref([]) as Ref<Marker[]>,
+				detectedTransmitters: [] as OverpassResponse[],
 			}),
 			geoJsonLine: ref({
 				type: "LineString" as "LineString" | "MultiLineString",

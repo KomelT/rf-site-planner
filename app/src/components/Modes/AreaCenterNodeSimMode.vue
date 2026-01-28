@@ -123,6 +123,7 @@ const showSections = ref({
 });
 
 const markers: Ref<Marker[]> = ref([]);
+const txMarkers: Ref<Marker[]> = ref([]);
 
 const defaultSimulationValues: ComputedRef<AreaCenterNodeSimulatorSite> =
 	computed(() => {
@@ -219,6 +220,8 @@ watch(
 			marker.setPopup(popup);
 			popup.addTo(map.map);
 		}
+
+		updateGeoJsonLine();
 	},
 	{ immediate: true, deep: true },
 );
@@ -226,40 +229,140 @@ watch(
 watch(
 	() => store.areaNodeSimModeData.polygonArea,
 	(newPolygon) => {
-		if (!map.isLoaded || !map.map) return;
-
-		// remove all markers
-		for (const marker of store.areaNodeSimModeData.polygonMarkers) {
-			marker.remove();
+		if (!map.map) return;
+		if (!map.isLoaded) {
+			map.map.once("load", () => renderPolygonArea(newPolygon));
+			return;
 		}
 
-		store.geoJsonLine.type = "LineString";
-		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
-		for (const point of newPolygon) {
-			store.geoJsonLine.coordinates.push([point[0], point[1]]);
-
-			const marker = new Marker({
-				color: "#FF0000",
-			})
-				.setLngLat(point)
-				.addTo(map.map);
-
-			store.areaNodeSimModeData.polygonMarkers.push(marker);
-
-			const popup = new Popup({ offset: 25 }).setHTML(
-				`<div class="text-sm text-center">
-						<p>Polygon point</p>
-					</div>`,
-			);
-			marker.setPopup(popup);
-			popup.addTo(map.map);
-		}
+		renderPolygonArea(newPolygon);
 	},
 	{
 		deep: true,
 		immediate: true,
 	},
 );
+
+watch(
+	() => store.areaNodeSimModeData.detectedTransmitters,
+	(newTransmitters) => {
+		if (!map.map) return;
+		if (!map.isLoaded) {
+			map.map.once("load", () => renderDetectedTransmitters(newTransmitters));
+			return;
+		}
+
+		renderDetectedTransmitters(newTransmitters);
+	},
+	{ deep: true, immediate: true },
+);
+
+function renderPolygonArea(polygon: [number, number][]) {
+	if (!map.map) return;
+
+	for (const marker of store.areaNodeSimModeData.polygonMarkers) {
+		marker.remove();
+	}
+	store.areaNodeSimModeData.polygonMarkers.splice(
+		0,
+		store.areaNodeSimModeData.polygonMarkers.length,
+	);
+
+	for (const point of polygon) {
+		const marker = new Marker({
+			color: "#FF0000",
+		})
+			.setLngLat(point)
+			.addTo(map.map);
+
+		store.areaNodeSimModeData.polygonMarkers.push(marker);
+
+		const popup = new Popup({ offset: 25 }).setHTML(
+			`<div class="text-sm text-center">
+						<p>Polygon point</p>
+					</div>`,
+		);
+		marker.setPopup(popup);
+		popup.addTo(map.map);
+	}
+
+	updateGeoJsonLine();
+}
+
+function renderDetectedTransmitters(transmitters: OverpassResponse[]) {
+	if (!map.map) return;
+
+	for (const marker of txMarkers.value) {
+		marker.remove();
+	}
+	txMarkers.value = [];
+
+	for (const transmitter of transmitters) {
+		const marker = new Marker({
+			color: "#00FF00",
+		})
+			.setLngLat([transmitter.lon, transmitter.lat])
+			.addTo(map.map);
+
+		txMarkers.value.push(marker);
+
+		const popup = new Popup({ offset: 25 }).setHTML(
+			`<div class="text-sm text-center">
+						<p>Transmitter</p>
+					</div>`,
+		);
+		marker.setPopup(popup);
+		popup.addTo(map.map);
+	}
+
+	updateGeoJsonLine();
+}
+
+function updateGeoJsonLine() {
+	const polygon = store.areaNodeSimModeData.polygonArea;
+	const transmitters = store.areaNodeSimModeData.detectedTransmitters;
+	const receivers = simulation.value.recivers;
+
+	const lineSegments: [number, number][][] = [];
+
+	if (polygon.length > 0) {
+		lineSegments.push(polygon.map((point) => [point[0], point[1]]));
+	}
+
+	if (transmitters.length && receivers.length) {
+		for (const transmitter of transmitters) {
+			for (const receiver of receivers) {
+				lineSegments.push([
+					[transmitter.lon, transmitter.lat],
+					[receiver.lon, receiver.lat],
+				]);
+			}
+		}
+	}
+
+	if (lineSegments.length === 0) {
+		store.geoJsonLine.type = "LineString";
+		store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);
+		return;
+	}
+
+	if (lineSegments.length === 1) {
+		store.geoJsonLine.type = "LineString";
+		store.geoJsonLine.coordinates.splice(
+			0,
+			store.geoJsonLine.coordinates.length,
+			...lineSegments[0],
+		);
+		return;
+	}
+
+	store.geoJsonLine.type = "MultiLineString";
+	store.geoJsonLine.coordinates.splice(
+		0,
+		store.geoJsonLine.coordinates.length,
+		...lineSegments,
+	);
+}
 
 function drawPolygonArea() {
 	if (!map.isLoaded || !map.map) return;
@@ -440,6 +543,33 @@ function addReceiver() {
 async function runSimulation() {
 	if (isMobileDevice()) store.toggleMobileMenu();
 
+	if (store.areaNodeSimModeData.polygonArea.length < 3) {
+		notificationStore.addNotification({
+			type: "error",
+			message: "Polygon area must be selected before running the simulation.",
+			title: "Center Node Simulation",
+			hideAfter: 3000,
+		});
+		return;
+	}
+
+	const missingReceiverCoords = simulation.value.recivers.some(
+		(receiver) =>
+			!Number.isFinite(receiver.lat) ||
+			!Number.isFinite(receiver.lon) ||
+			(receiver.lat === 0 && receiver.lon === 0),
+	);
+
+	if (missingReceiverCoords) {
+		notificationStore.addNotification({
+			type: "error",
+			message: "Receiver coordinates must be selected before running the simulation.",
+			title: "Center Node Simulation",
+			hideAfter: 3000,
+		});
+		return;
+	}
+
 	notificationStore.addNotification({
 		type: "info",
 		message: "Starting simulation...",
@@ -465,6 +595,8 @@ async function runSimulation() {
 			return el;
 		return undefined;
 	}).filter((el): el is OverpassResponse => el !== undefined)
+
+	store.areaNodeSimModeData.detectedTransmitters = trans;
 
 	const tasks = ref<{ id: string; tx: string; rx: string }[]>([]);
 	store.centerNodeSimModeData.table.data = [];
@@ -574,9 +706,13 @@ onBeforeUnmount(() => {
 		marker.remove();
 	}
 
-	for (const marker of store.areaNodeSimModeData.polygonMarkers) {
+	for (const marker of txMarkers.value) {
 		marker.remove();
 	}
+
+	for (const marker of store.areaNodeSimModeData.polygonMarkers) {
+		marker.remove();
+	 }
 
 	store.geoJsonLine.type = "LineString";
 	store.geoJsonLine.coordinates.splice(0, store.geoJsonLine.coordinates.length);

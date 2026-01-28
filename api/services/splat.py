@@ -284,6 +284,7 @@ class Splat:
                 return dumps(
                     {
                         "distance": distance,
+                        "length": report["distance"],
                         "profile": profile,
                         "curvature": curvature,
                         "fresnel": fresnel,
@@ -520,6 +521,8 @@ class Splat:
         lr_loss_type = ""
         lr_loss = None
 
+        distance = None
+
         NO_LOS = b"No obstructions to LOS path due to terrain were detected by SPLAT!"
         FIRST_F_CLEAR = b"The first Fresnel zone is clear."
         F60_CLEAR = b"60% of the first Fresnel zone is clear."
@@ -532,6 +535,8 @@ class Splat:
         FSPL = b"Free space path loss:"
         LR = b"Longley-Rice path loss:"
         ITWOM = b"ITWOM Version 3.0 path loss:"
+
+        DISTANCE = b"Distance to rx:"
 
         i = 0
         n = len(lines)
@@ -614,6 +619,11 @@ class Splat:
                     lr_loss_type = "ITWOM Version 3.0 path loss"
                     lr_loss = round(v, 2)
 
+            if DISTANCE in line:
+                v = self._extract_float_after(DISTANCE, line, idx=3)
+                if v is not None:
+                    distance = round(v, 2)
+
             i += 1
 
         return {
@@ -628,6 +638,7 @@ class Splat:
             "free_space_path_loss": free_space_path_loss,
             "lr_loss_type": lr_loss_type,
             "lr_loss": lr_loss,
+            "distance": distance,
         }
 
     @staticmethod

@@ -444,6 +444,20 @@ class Splat:
                         "utf-8"
                     )
 
+                # Calculate expected bounds from request parameters
+                # Approximate degrees per km: 1 degree ≈ 111 km
+                radius_degrees = request.radius / 111.0
+                lat_offset = radius_degrees
+                lon_offset = radius_degrees / math.cos(math.radians(request.lat)) if abs(request.lat) < 85 else radius_degrees
+                
+                bounds = {
+                    "north": min(90, request.lat + lat_offset),
+                    "south": max(-90, request.lat - lat_offset),
+                    "east": min(180, request.lon + lon_offset),
+                    "west": max(-180, request.lon - lon_offset),
+                }
+                logger.debug(f"Calculated coverage bounds: {bounds}")
+
                 with open(os.path.join(tmpdir, "output.ppm"), "rb") as ppm_file:
                     with open(os.path.join(tmpdir, "output.kml"), "rb") as kml_file:
                         ppm_data = ppm_file.read()
@@ -454,6 +468,7 @@ class Splat:
                             request.colormap,
                             request.min_dbm,
                             request.max_dbm,
+                            explicit_bounds=bounds,
                         )
 
                 logger.info("SPLAT! coverage prediction completed successfully.")
@@ -960,24 +975,35 @@ class Splat:
         min_dbm: float,
         max_dbm: float,
         null_value: int = 255,  # Define the null value for transparency
+        explicit_bounds: dict = None,  # Optional: {"north", "south", "east", "west"}
     ) -> bytes:
         logger.info("Starting GeoTIFF generation from SPLAT! PPM and KML data.")
 
         try:
-            # Parse KML and extract bounding box
-            logger.debug("Parsing KML content.")
-            tree = ET.ElementTree(ET.fromstring(kml_bytes))
-            namespace = {"kml": "http://earth.google.com/kml/2.1"}
-            box = tree.find(".//kml:LatLonBox", namespace)
+            # Use explicit bounds if provided, otherwise extract from KML
+            if explicit_bounds is not None:
+                north = explicit_bounds["north"]
+                south = explicit_bounds["south"]
+                east = explicit_bounds["east"]
+                west = explicit_bounds["west"]
+                logger.debug(
+                    f"Using explicit bounds: north={north}, south={south}, east={east}, west={west}"
+                )
+            else:
+                # Parse KML and extract bounding box as fallback
+                logger.debug("Parsing KML content.")
+                tree = ET.ElementTree(ET.fromstring(kml_bytes))
+                namespace = {"kml": "http://earth.google.com/kml/2.1"}
+                box = tree.find(".//kml:LatLonBox", namespace)
 
-            north = float(box.find("kml:north", namespace).text)
-            south = float(box.find("kml:south", namespace).text)
-            east = float(box.find("kml:east", namespace).text)
-            west = float(box.find("kml:west", namespace).text)
+                north = float(box.find("kml:north", namespace).text)
+                south = float(box.find("kml:south", namespace).text)
+                east = float(box.find("kml:east", namespace).text)
+                west = float(box.find("kml:west", namespace).text)
 
-            logger.debug(
-                f"Extracted bounding box: north={north}, south={south}, east={east}, west={west}"
-            )
+                logger.debug(
+                    f"Extracted KML bounds: north={north}, south={south}, east={east}, west={west}"
+                )
 
             # Read PPM content
             logger.debug("Reading PPM content.")

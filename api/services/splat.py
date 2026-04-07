@@ -980,30 +980,42 @@ class Splat:
         logger.info("Starting GeoTIFF generation from SPLAT! PPM and KML data.")
 
         try:
-            # Use explicit bounds if provided, otherwise extract from KML
+            # Parse KML bounds. SPLAT writes the full terrain mosaic extent there.
+            logger.debug("Parsing KML content.")
+            tree = ET.ElementTree(ET.fromstring(kml_bytes))
+            namespace = {"kml": "http://earth.google.com/kml/2.1"}
+            box = tree.find(".//kml:LatLonBox", namespace)
+
+            kml_north = float(box.find("kml:north", namespace).text)
+            kml_south = float(box.find("kml:south", namespace).text)
+            kml_east = float(box.find("kml:east", namespace).text)
+            kml_west = float(box.find("kml:west", namespace).text)
+
+            logger.debug(
+                "Extracted KML bounds: north=%s, south=%s, east=%s, west=%s",
+                kml_north,
+                kml_south,
+                kml_east,
+                kml_west,
+            )
+
             if explicit_bounds is not None:
                 north = explicit_bounds["north"]
                 south = explicit_bounds["south"]
                 east = explicit_bounds["east"]
                 west = explicit_bounds["west"]
                 logger.debug(
-                    f"Using explicit bounds: north={north}, south={south}, east={east}, west={west}"
+                    "Using explicit bounds: north=%s, south=%s, east=%s, west=%s",
+                    north,
+                    south,
+                    east,
+                    west,
                 )
             else:
-                # Parse KML and extract bounding box as fallback
-                logger.debug("Parsing KML content.")
-                tree = ET.ElementTree(ET.fromstring(kml_bytes))
-                namespace = {"kml": "http://earth.google.com/kml/2.1"}
-                box = tree.find(".//kml:LatLonBox", namespace)
-
-                north = float(box.find("kml:north", namespace).text)
-                south = float(box.find("kml:south", namespace).text)
-                east = float(box.find("kml:east", namespace).text)
-                west = float(box.find("kml:west", namespace).text)
-
-                logger.debug(
-                    f"Extracted KML bounds: north={north}, south={south}, east={east}, west={west}"
-                )
+                north = kml_north
+                south = kml_south
+                east = kml_east
+                west = kml_west
 
             # Read PPM content
             logger.debug("Reading PPM content.")
@@ -1021,45 +1033,54 @@ class Splat:
             )  # Optionally set to 0
             no_data_value = null_value
 
-            # SPLAT output may contain large nodata margins around the actual plot.
-            # Crop to the non-nodata window and remap bounds to that inner raster
-            # so the layer is not rendered shrunk and shifted on the map.
-            valid_rows, valid_cols = np.where(img_array != no_data_value)
-            if valid_rows.size > 0 and valid_cols.size > 0:
-                orig_height, orig_width = img_array.shape
-                row_min = int(valid_rows.min())
-                row_max = int(valid_rows.max()) + 1
-                col_min = int(valid_cols.min())
-                col_max = int(valid_cols.max()) + 1
+            # When explicit bounds are provided, crop the full SPLAT terrain mosaic
+            # down to the requested coverage extent before georeferencing.
+            if explicit_bounds is not None:
+                src_height, src_width = img_array.shape
+                lon_span = kml_east - kml_west
+                lat_span = kml_north - kml_south
 
-                if (
-                    row_min > 0
-                    or col_min > 0
-                    or row_max < orig_height
-                    or col_max < orig_width
-                ):
-                    logger.debug(
-                        "Cropping SPLAT raster to non-nodata window: "
-                        "rows=%s:%s cols=%s:%s",
-                        row_min,
-                        row_max,
-                        col_min,
-                        col_max,
+                if lon_span <= 0 or lat_span <= 0:
+                    raise RuntimeError("Invalid KML bounds for SPLAT raster crop.")
+
+                crop_west = max(kml_west, west)
+                crop_east = min(kml_east, east)
+                crop_south = max(kml_south, south)
+                crop_north = min(kml_north, north)
+
+                if crop_west >= crop_east or crop_south >= crop_north:
+                    raise RuntimeError(
+                        "Requested coverage bounds do not overlap SPLAT raster bounds."
                     )
 
-                    lon_span = east - west
-                    lat_span = north - south
+                col_min = max(
+                    0, int(math.floor((crop_west - kml_west) / lon_span * src_width))
+                )
+                col_max = min(
+                    src_width, int(math.ceil((crop_east - kml_west) / lon_span * src_width))
+                )
+                row_min = max(
+                    0, int(math.floor((kml_north - crop_north) / lat_span * src_height))
+                )
+                row_max = min(
+                    src_height,
+                    int(math.ceil((kml_north - crop_south) / lat_span * src_height)),
+                )
 
-                    cropped_west = west + (col_min / orig_width) * lon_span
-                    cropped_east = west + (col_max / orig_width) * lon_span
-                    cropped_north = north - (row_min / orig_height) * lat_span
-                    cropped_south = north - (row_max / orig_height) * lat_span
+                logger.debug(
+                    "Cropping SPLAT raster from KML bounds to requested bounds: "
+                    "rows=%s:%s cols=%s:%s",
+                    row_min,
+                    row_max,
+                    col_min,
+                    col_max,
+                )
 
-                    img_array = img_array[row_min:row_max, col_min:col_max]
-                    west = cropped_west
-                    east = cropped_east
-                    north = cropped_north
-                    south = cropped_south
+                img_array = img_array[row_min:row_max, col_min:col_max]
+                west = crop_west
+                east = crop_east
+                north = crop_north
+                south = crop_south
 
             # Create GeoTIFF using Rasterio
             height, width = img_array.shape

@@ -899,6 +899,7 @@ def run_los_request(payload: Dict[str, Any]) -> Dict[str, Any]:
     return {
         "ok": True,
         "pred": data.get("rx_signal_power"),
+        "pred_optimized": data.get("rx_signal_power_optimized"),
         "path_loss_rssi": data.get("path_loss_rssi"),
         "los_obstructed": normalize_bool(data.get("path", {}).get("obstructed")),
         "first_fresnel_obstructed": normalize_bool(data.get("first_fresnel", {}).get("obstructed")),

@@ -12,6 +12,7 @@ log.txt
 *.log
 .tile_cache/
 .splat_tiles/
+.codex
 
 # Logs
 logs

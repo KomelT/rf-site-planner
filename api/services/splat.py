@@ -1021,6 +1021,46 @@ class Splat:
             )  # Optionally set to 0
             no_data_value = null_value
 
+            # SPLAT output may contain large nodata margins around the actual plot.
+            # Crop to the non-nodata window and remap bounds to that inner raster
+            # so the layer is not rendered shrunk and shifted on the map.
+            valid_rows, valid_cols = np.where(img_array != no_data_value)
+            if valid_rows.size > 0 and valid_cols.size > 0:
+                orig_height, orig_width = img_array.shape
+                row_min = int(valid_rows.min())
+                row_max = int(valid_rows.max()) + 1
+                col_min = int(valid_cols.min())
+                col_max = int(valid_cols.max()) + 1
+
+                if (
+                    row_min > 0
+                    or col_min > 0
+                    or row_max < orig_height
+                    or col_max < orig_width
+                ):
+                    logger.debug(
+                        "Cropping SPLAT raster to non-nodata window: "
+                        "rows=%s:%s cols=%s:%s",
+                        row_min,
+                        row_max,
+                        col_min,
+                        col_max,
+                    )
+
+                    lon_span = east - west
+                    lat_span = north - south
+
+                    cropped_west = west + (col_min / orig_width) * lon_span
+                    cropped_east = west + (col_max / orig_width) * lon_span
+                    cropped_north = north - (row_min / orig_height) * lat_span
+                    cropped_south = north - (row_max / orig_height) * lat_span
+
+                    img_array = img_array[row_min:row_max, col_min:col_max]
+                    west = cropped_west
+                    east = cropped_east
+                    north = cropped_north
+                    south = cropped_south
+
             # Create GeoTIFF using Rasterio
             height, width = img_array.shape
             transform = from_bounds(west, south, east, north, width, height)

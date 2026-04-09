@@ -15,6 +15,7 @@ import numpy as np
 import rasterio
 import requests
 from models.CoveragePredictionRequest import CoveragePredictionRequest
+from models.CoveragePrediction5GRequest import CoveragePrediction5GRequest
 from models.LosPredictionRequest import LosPredictionRequest
 from PIL import Image
 from rasterio.transform import from_bounds
@@ -480,6 +481,195 @@ class Splat:
             except Exception as e:
                 logger.error(f"Error during coverage prediction: {e}")
                 raise RuntimeError(f"Error during coverage prediction: {e}")
+
+    def coverage_prediction_5g(self, request: CoveragePrediction5GRequest) -> dict:
+        logger.debug(f"5G coverage prediction request: {request.json()}")
+
+        # Set hard limit of 300 km radius
+        radius_km = min(request.radius, 300)
+        if request.radius > 300:
+            logger.debug(
+                f"User tried to set radius of {request.radius} km, setting to 300 km instead."
+            )
+
+        # Determine and download required terrain tiles only once for all beams.
+        required_tiles = Splat._calculate_required_terrain_tiles_coverage(
+            request.lat, request.lon, radius_km * 1000
+        )
+        self._download_terrain_tile(required_tiles, request.high_resolution)
+
+        # Calculate expected bounds from request parameters.
+        radius_degrees = radius_km / 111.0
+        lat_offset = radius_degrees
+        lon_offset = (
+            radius_degrees / math.cos(math.radians(request.lat))
+            if abs(request.lat) < 85
+            else radius_degrees
+        )
+        bounds = {
+            "north": min(90, request.lat + lat_offset),
+            "south": max(-90, request.lat - lat_offset),
+            "east": min(180, request.lon + lon_offset),
+            "west": max(-180, request.lon - lon_offset),
+        }
+
+        legend_html_blob = None
+        beams_output = []
+
+        for index, beam in enumerate(request.beams):
+            with tempfile.TemporaryDirectory() as tmpdir:
+                try:
+                    logger.debug(
+                        "5G beam coverage start: index=%s azimuth=%s beam_width=%s",
+                        index,
+                        beam.azimuth,
+                        beam.beam_width,
+                    )
+
+                    with open(os.path.join(tmpdir, "tx.qth"), "wb") as qth_file:
+                        qth_file.write(
+                            Splat._create_splat_qth(
+                                "tx", request.lat, request.lon, request.tx_height
+                            )
+                        )
+
+                    with open(os.path.join(tmpdir, "splat.lrp"), "wb") as lrp_file:
+                        lrp_file.write(
+                            Splat._create_splat_lrp(
+                                ground_dielectric=request.ground_dielectric,
+                                ground_conductivity=request.ground_conductivity,
+                                atmosphere_bending=request.atmosphere_bending,
+                                frequency_mhz=request.frequency_mhz,
+                                radio_climate=request.radio_climate,
+                                polarization=request.polarization,
+                                situation_fraction=request.situation_fraction,
+                                time_fraction=request.time_fraction,
+                                tx_power=request.tx_power,
+                                tx_gain=request.tx_gain,
+                                tx_loss=request.tx_loss,
+                            )
+                        )
+
+                    with open(os.path.join(tmpdir, "splat.dcf"), "wb") as dcf_file:
+                        dcf_file.write(
+                            Splat._create_splat_dcf(
+                                colormap_name=request.colormap,
+                                min_dbm=request.min_dbm,
+                                max_dbm=request.max_dbm,
+                            )
+                        )
+
+                    with open(os.path.join(tmpdir, "tx.az"), "wb") as az_file:
+                        az_file.write(
+                            Splat._create_5g_tx_az_pattern(
+                                beam.azimuth, beam.beam_width
+                            )
+                        )
+
+                    with open(os.path.join(tmpdir, "tx.el"), "wb") as el_file:
+                        el_file.write(Splat._create_5g_tx_el_pattern())
+
+                    splat_command = [
+                        (
+                            self.splat_hd_binary
+                            if request.high_resolution
+                            else self.splat_binary
+                        ),
+                        "-t",
+                        "tx.qth",
+                        "-L",
+                        str(request.rx_height),
+                        "-d",
+                        self.tile_cache,
+                        "-metric",
+                        "-R",
+                        str(radius_km),
+                        "-sc",
+                        "-gc",
+                        str(request.clutter_height),
+                        "-ngs",
+                        "-N",
+                        "-o",
+                        "output.ppm",
+                        "-dbm",
+                        "-db",
+                        str(request.min_dbm),
+                        "-kml",
+                        "-olditm" if request.itm_mode else "",
+                    ]
+                    logger.debug(f"Executing SPLAT! command: {' '.join(splat_command)}")
+
+                    splat_result = subprocess.run(
+                        splat_command,
+                        cwd=tmpdir,
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+
+                    logger.debug(f"SPLAT! stdout:\n{splat_result.stdout}")
+                    logger.debug(f"SPLAT! stderr:\n{splat_result.stderr}")
+
+                    if splat_result.returncode != 0:
+                        logger.error(
+                            "SPLAT! 5G beam execution failed with return code %s",
+                            splat_result.returncode,
+                        )
+                        raise RuntimeError(
+                            f"SPLAT! 5G beam execution failed with return code {splat_result.returncode}\n"
+                            f"Stdout: {splat_result.stdout}\nStderr: {splat_result.stderr}"
+                        )
+
+                    if legend_html_blob is None:
+                        with open(
+                            os.path.join(tmpdir, "output-ck.ppm"), "rb"
+                        ) as label_file:
+                            legend_data = label_file.read()
+                            legend_png = Image.open(io.BytesIO(legend_data))
+                            buffered = io.BytesIO()
+                            legend_png.save(buffered, format="PNG")
+                            legend_html_blob = base64.b64encode(
+                                buffered.getvalue()
+                            ).decode("utf-8")
+
+                    with open(os.path.join(tmpdir, "output.ppm"), "rb") as ppm_file:
+                        with open(os.path.join(tmpdir, "output.kml"), "rb") as kml_file:
+                            ppm_data = ppm_file.read()
+                            kml_data = kml_file.read()
+                            geotiff_data = Splat._create_splat_geotiff(
+                                ppm_data,
+                                kml_data,
+                                request.colormap,
+                                request.min_dbm,
+                                request.max_dbm,
+                                explicit_bounds=bounds,
+                            )
+
+                    beams_output.append(
+                        {
+                            "beam_index": index,
+                            "name": beam.name if beam.name else f"Beam {index + 1}",
+                            "azimuth": beam.azimuth,
+                            "beam_width": beam.beam_width,
+                            "geotiff": geotiff_data,
+                        }
+                    )
+
+                    logger.debug(
+                        "5G beam coverage completed: index=%s name=%s",
+                        index,
+                        beams_output[-1]["name"],
+                    )
+                except Exception as e:
+                    logger.error(f"Error during 5G coverage prediction (beam {index}): {e}")
+                    raise RuntimeError(
+                        f"Error during 5G coverage prediction (beam {index}): {e}"
+                    )
+
+        return {
+            "legend": legend_html_blob,
+            "beams": beams_output,
+        }
 
     @staticmethod
     def _read_bytes(path: str) -> bytes:
@@ -1190,6 +1380,53 @@ class Splat:
         min_lon = 360 - min_lon if hgt_filename[3] == "E" else min_lon
         max_lon = 0 if min_lon == 359 else min_lon + 1
         return f"{lat}:{lat + 1}:{min_lon}:{max_lon}{'-hd.sdf' if high_resolution else '.sdf'}"
+
+    @staticmethod
+    def _angular_distance_deg(a: float, b: float) -> float:
+        return abs((a - b + 180.0) % 360.0 - 180.0)
+
+    @staticmethod
+    def _create_5g_tx_az_pattern(azimuth_deg: float, beam_width_deg: float) -> bytes:
+        # -3 dB amplitude ratio at half-power beam width.
+        half_bw = max(beam_width_deg / 2.0, 0.1)
+        target_ratio = 10 ** (-3.0 / 20.0)  # amplitude ratio for -3 dB
+        sigma = half_bw / math.sqrt(2.0 * math.log(1.0 / target_ratio))
+
+        lines = [f"{azimuth_deg:.2f}"]
+        for angle in range(0, 361):
+            delta = Splat._angular_distance_deg(float(angle), 0.0)
+            amplitude = math.exp(-0.5 * (delta / sigma) ** 2)
+            amplitude = max(0.01, min(1.0, amplitude))
+            lines.append(f"{angle:3d} {amplitude:.4f}")
+
+        return ("\n".join(lines) + "\n").encode("utf-8")
+
+    @staticmethod
+    def _create_5g_tx_el_pattern() -> bytes:
+        # Generic vertical pattern for sector coverage with a mild main lobe around 0 deg.
+        data = [
+            "0.0 0.0",
+            "-20 0.20",
+            "-15 0.35",
+            "-10 0.55",
+            "-8 0.70",
+            "-6 0.82",
+            "-4 0.92",
+            "-2 0.98",
+            "0 1.00",
+            "2 0.98",
+            "4 0.92",
+            "6 0.82",
+            "8 0.70",
+            "10 0.55",
+            "15 0.35",
+            "20 0.20",
+            "30 0.08",
+            "40 0.03",
+            "60 0.01",
+            "90 0.00",
+        ]
+        return ("\n".join(data) + "\n").encode("utf-8")
 
 
 if __name__ == "__main__":

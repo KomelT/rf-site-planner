@@ -1,9 +1,11 @@
 import logging
+from json import dumps, loads
 from uuid import uuid4
 
 from fastapi import BackgroundTasks, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from models.CoveragePrediction5GRequest import CoveragePrediction5GRequest
 from models.CoveragePredictionRequest import CoveragePredictionRequest
 from models.LosPredictionRequest import LosPredictionRequest
 from redis import StrictRedis
@@ -73,6 +75,40 @@ def run_coverage(task_id: str, request: CoveragePredictionRequest):
         raise
 
 
+def run_coverage_5g(task_id: str, request: CoveragePrediction5GRequest):
+    try:
+        logger.info(f"Starting SPLAT! 5G coverage prediction for task {task_id}.")
+        data = splat_service.coverage_prediction_5g(request)
+
+        beam_layers = []
+        for beam in data["beams"]:
+            layer_id = f"{task_id}-beam-{beam['beam_index'] + 1}"
+            store_tiff_in_geoserver(layer_id, beam["geotiff"])
+            beam_layers.append(
+                {
+                    "beam_index": beam["beam_index"],
+                    "name": beam["name"],
+                    "azimuth": beam["azimuth"],
+                    "beam_width": beam["beam_width"],
+                    "layer_id": layer_id,
+                }
+            )
+
+        redis_client.setex(
+            f"{task_id}:data",
+            3600,
+            dumps({"legend": data["legend"], "beams": beam_layers}),
+        )
+        redis_client.setex(f"{task_id}:layers", 3600, dumps([b["layer_id"] for b in beam_layers]))
+        redis_client.setex(f"{task_id}:status", 3600, "completed")
+        logger.info(f"5G task {task_id} marked as completed.")
+    except Exception as e:
+        logger.error(f"Error in SPLAT! 5G task {task_id}: {e}")
+        redis_client.setex(f"{task_id}:status", 3600, "failed")
+        redis_client.setex(f"{task_id}:error", 3600, str(e))
+        raise
+
+
 @app.post("/coverage")
 async def predict(
     payload: CoveragePredictionRequest, background_tasks: BackgroundTasks
@@ -83,9 +119,30 @@ async def predict(
     return JSONResponse({"task_id": task_id})
 
 
+@app.post("/coverage/5g")
+async def predict_5g(
+    payload: CoveragePrediction5GRequest, background_tasks: BackgroundTasks
+) -> JSONResponse:
+    task_id = str(uuid4())
+    redis_client.setex(f"{task_id}:status", 3600, "processing")
+    background_tasks.add_task(run_coverage_5g, task_id, payload)
+    return JSONResponse({"task_id": task_id})
+
+
 @app.delete("/coverage/{task_id}")
 async def delete_coverage(task_id: str) -> JSONResponse:
-    remove_tiff_from_geoserver(task_id)
+    raw_layers = redis_client.get(f"{task_id}:layers")
+    if raw_layers:
+        try:
+            layers = loads(raw_layers.decode("utf-8"))
+            for layer_id in layers:
+                remove_tiff_from_geoserver(layer_id)
+        except Exception as e:
+            logger.warning(f"Failed to delete all beam layers for task {task_id}: {e}")
+            remove_tiff_from_geoserver(task_id)
+    else:
+        remove_tiff_from_geoserver(task_id)
+
     return JSONResponse({"status": "deleted"})
 
 
